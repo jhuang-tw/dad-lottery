@@ -1,0 +1,9 @@
+# 黃曆派策略需要 cnlunar（純 Python，無 C 依賴）
+cnlunar>=0.2.0
+streamlit>=1.34.0
+plotly>=5.20.0
+pandas>=2.2.0
+
+# 以下選用（非必要）：
+#   numpy
+#   matplotlib
