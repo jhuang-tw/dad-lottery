@@ -1,5 +1,3 @@
-"""Lotry Streamlit app: a data confession for lottery myths."""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -49,7 +47,6 @@ STRATEGY_GROUPS: dict[str, list[str]] = {
 BASELINE_STRATEGY = "random"
 ALL_POOL_STRATEGIES = [name for names in STRATEGY_GROUPS.values() for name in names] + [BASELINE_STRATEGY]
 
-# 各派只跑一個代表策略，讓長輩頁面不會卡（原本 27 倍 → 5 倍）。
 STRATEGY_REPRESENTATIVES = {
     "追熱號": "hot",
     "反著買": "anti_hot",
@@ -58,7 +55,6 @@ STRATEGY_REPRESENTATIVES = {
 }
 FAST_STRATEGIES = list(STRATEGY_REPRESENTATIVES.values()) + [BASELINE_STRATEGY]
 
-# 每一派一句話解釋，讓套股人也看得懂。
 STRATEGY_GROUP_DESCRIPTIONS = {
     "電腦選號": "電腦隨機亂選，不看任何規則。",
     "追熱號": "看哪幾個號碼最近常開，就跟著買。",
@@ -107,36 +103,33 @@ def render_scroll_anchor(anchor_id: str) -> None:
         height=0,
     )
 
-# This project compares strategies by main-number hits. Taiwan lottery prizes have
-# special-number and pari-mutuel details, so the app uses a deliberately transparent
-# fixed estimate for education rather than claiming exact accounting.
-# Key = (主區命中數, 特別號/第二區命中數)
+# 獎金估算：頭/貳/參/肆獎取近年平均單人實領，其他固定獎金依官方規則。
+# 索引為 (主區命中數, 特別號/第二區命中數)
 PRIZE_TABLE = {
     "lotto649": {
-        (6, 0): 5_000_000,   # 頭獎（簡化估算）
-        (5, 1): 150_000,     # 貳獎
-        (5, 0): 20_000,      # 參獎
-        (4, 1): 4_000,       # 肆獎
-        (4, 0): 800,         # 伍獎
-        (3, 1): 400,         # 陸獎
-        (3, 0): 200,         # 柒獎
-        (2, 1): 100,         # 普獎
+        (6, 0): 30_000_000,  # 頭獎：近年平均單人實領約 NT$30M（已假設多人均分）
+        (5, 1): 250_000,     # 貳獎：派彩平均單人實領
+        (5, 0): 50_000,      # 參獎：派彩平均單人實領
+        (4, 1): 14_000,      # 肆獎：按比例，API 實測近 5 年平均單人實領約 NT$14,000
+        (4, 0): 2_000,       # 伍獎：自 107 年改固定 NT$2,000（107 年前浮動約 NT$2,000）
+        (3, 1): 1_000,       # 陸獎（固定，API 實測 sixthAssign.perPrize=1,000）
+        (3, 0): 400,         # 柒獎（固定，API 實測 seventhAssign.perPrize=400；2014 年此獎未設）
+        (2, 1): 400,         # 普獎（固定，API 實測 normalAssign.perPrize=400）
     },
     "superlotto638": {
-        (6, 1): 100_000_000, # 頭獎（簡化估算）
-        (6, 0): 1_500_000,   # 貳獎
-        (5, 1): 150_000,     # 參獎
-        (5, 0): 20_000,      # 肆獎
-        (4, 1): 4_000,       # 伍獎
-        (4, 0): 800,         # 陸獎
-        (3, 1): 400,         # 柒獎
-        (3, 0): 200,         # 捌獎
-        (2, 1): 100,         # 玖獎
-        (1, 1): 100,         # 拾獎
-        (0, 1): 100,         # 普獎
+        (6, 1): 200_000_000, # 頭獎：保守估算 NT$200M（API 實測中獎者平均實領 ~NT$955M，但為保守起見用低估值）
+        (6, 0): 25_000_000,  # 貳獎：按比例，API 實測近年平均單人實領約 NT$24.5M
+        (5, 1): 150_000,     # 參獎（固定）
+        (5, 0): 20_000,      # 肆獎（固定）
+        (4, 1): 4_000,       # 伍獎（固定）
+        (4, 0): 800,         # 陸獎（固定）
+        (3, 1): 400,         # 柒獎（固定）
+        (3, 0): 200,         # 捌獎（固定）
+        (2, 1): 100,         # 玖獎（固定）
+        (1, 1): 100,         # 拾獎（固定）
+        (0, 1): 100,         # 普獎（固定）
     },
 }
-
 
 @dataclass(frozen=True)
 class CustomBacktest:
@@ -201,7 +194,6 @@ def inject_style() -> None:
             --lotry-ink: #172033;
             --lotry-muted: #667085;
             --lotry-paper: #fffaf2;
-            /* 統一垂直節奏，避免每個元件各自設定 margin 造成擁擠或鬆散 */
             --gap-xs: .4rem;
             --gap-sm: .8rem;
             --gap-md: 1.2rem;
@@ -228,8 +220,6 @@ def inject_style() -> None:
             font-size: 17px;
             letter-spacing: 0;
         }
-
-        /* === HERO === */
         .hero {
             position: relative;
             overflow: hidden;
@@ -275,8 +265,6 @@ def inject_style() -> None:
             font-weight: 900;
             line-height: 1.65;
         }
-
-        /* === SECTION RHYTHM === */
         .step-label {
             color: #000000;
             font-size: 1.4rem;
@@ -297,8 +285,6 @@ def inject_style() -> None:
         .section-eyebrow { color: #991b1b; font-weight: 900; font-size: 1rem; margin-bottom: .3rem; letter-spacing: .03em; }
         .section-title { color: #000000; font-size: 1.5rem; font-weight: 900; margin: 0 0 .5rem; line-height: 1.3; }
         .section-copy { color: #1a202c; line-height: 1.7; margin: 0; font-size: 1.1rem; font-weight: 500; }
-
-        /* === STREAMLIT WIDGET TWEAKS === */
         div[data-testid="stRadio"] { margin-bottom: .4rem; }
         div[data-testid="stRadio"] label { font-size: 1.15rem !important; font-weight: 700 !important; }
         [data-testid="stCaptionContainer"] { margin: .2rem 0 1rem; font-size: 1rem !important; color: #475569 !important; }
@@ -318,7 +304,6 @@ def inject_style() -> None:
             opacity: 1 !important;
         }
         div[data-testid="stRadio"] input[type="radio"] { opacity: 1 !important; }
-        /* Streamlit 預設 metric 保留樣式以防舊位置使用，但不再主動使用 */
         div[data-testid="stMetric"] {
             background: #ffffff;
             border: var(--border-strong);
@@ -329,8 +314,6 @@ def inject_style() -> None:
         }
         div[data-testid="stMetric"] label { font-size: 1rem !important; font-weight: 900 !important; color: #000000 !important; white-space: normal !important; }
         div[data-testid="stMetricValue"] { font-size: 1.4rem !important; font-weight: 900 !important; color: #b91c1c !important; white-space: normal !important; word-break: break-all !important; line-height: 1.3 !important; }
-
-        /* === STAT GRID === */
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; margin: var(--gap-sm) 0 var(--gap-md); }
         .stat-grid.three { grid-template-columns: 1fr 1fr 1fr; }
         .stat-card {
@@ -343,8 +326,6 @@ def inject_style() -> None:
         .stat-card-label { font-size: .95rem; font-weight: 700; color: #475569; margin-bottom: .25rem; }
         .stat-card-value { font-size: 1.3rem; font-weight: 900; color: #b91c1c; word-break: break-all; line-height: 1.25; }
         .stat-card-value.neutral { color: #0f172a; }
-
-        /* === BALLS === */
         .selected-strip {
             display: flex;
             align-items: center;
@@ -387,8 +368,6 @@ def inject_style() -> None:
             border: 2.5px solid #f8c74a;
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
         }
-
-        /* === BUTTONS === */
         div.stButton > button,
         div.stDownloadButton > button,
         div[data-testid="stDownloadButton"] > button {
@@ -414,7 +393,6 @@ def inject_style() -> None:
         div[data-testid="stDownloadButton"] > button p { color: #1a1a1a !important; font-size: 1.15rem !important; font-weight: 900 !important; white-space: nowrap !important; }
         div.stButton > button:not([kind="primary"]) p { color: #1a1a1a !important; }
         div.stButton > button[kind="primary"] p { color: #ffffff !important; font-size: 1.2rem !important; font-weight: 900 !important; white-space: nowrap !important; }
-        /* 自製超連結按鈕（如 LINE 分享）：與 stButton 視覺尺寸一致 */
         a.app-link-btn {
             display: flex !important;
             align-items: center;
@@ -466,8 +444,6 @@ def inject_style() -> None:
             letter-spacing: 0 !important;
         }
         .ball-row div.stButton > button[kind="primary"] p { font-weight: 900 !important; color: #ffffff !important; }
-
-        /* === RESULT CARDS === */
         .loss-box {
             padding: 1.6rem 1.4rem;
             border-radius: var(--radius);
@@ -479,6 +455,23 @@ def inject_style() -> None:
         }
         .loss-number {
             color: #b91c1c;
+            font-size: clamp(2.6rem, 11vw, 4.4rem);
+            font-weight: 900;
+            line-height: 1.05;
+            margin-top: .8rem;
+            letter-spacing: -.01em;
+        }
+        .win-box {
+            padding: 1.6rem 1.4rem;
+            border-radius: var(--radius);
+            background: #f0fdf4;
+            border: 2px solid #15803d;
+            text-align: center;
+            margin: 0 0 var(--gap-sm);
+            box-shadow: 0 4px 12px rgba(21, 128, 61, .12);
+        }
+        .win-number {
+            color: #15803d;
             font-size: clamp(2.6rem, 11vw, 4.4rem);
             font-weight: 900;
             line-height: 1.05;
@@ -523,8 +516,6 @@ def inject_style() -> None:
         .simple-result-title { color: #000000; font-size: 1.25rem; font-weight: 900; margin-bottom: .6rem; line-height: 1.4; }
         .loss-track { height: .9rem; border-radius: 999px; background: linear-gradient(90deg, #fee2e2, #ef4444); margin: 1rem 0 .7rem; }
         .loss-track-labels { display: flex; justify-content: space-between; color: #1a202c; font-size: 1rem; font-weight: 900; }
-
-        /* === LOADING === */
         .loading-card {
             margin: 1rem 0;
             padding: 1.4rem 1.2rem;
@@ -559,8 +550,6 @@ def inject_style() -> None:
             0%, 100% { transform: translateY(0); }
             45% { transform: translateY(-.45rem); }
         }
-
-        /* === SHARE CTA === */
         .share-cta {
             margin: var(--gap-xl) 0 var(--gap-md);
             padding: 1.5rem 1.3rem;
@@ -573,8 +562,6 @@ def inject_style() -> None:
         }
         .share-cta-title { font-size: 1.4rem; font-weight: 900; margin-bottom: .5rem; color: #f8c74a; line-height: 1.4; }
         .share-cta-body { font-size: 1.05rem; font-weight: 600; line-height: 1.7; color: #ffffff; }
-
-        /* === FOOTER WARNING === */
         .warning-line {
             margin: var(--gap-xl) 0 .5rem;
             padding: 1.4rem 1.2rem;
@@ -587,8 +574,6 @@ def inject_style() -> None:
             text-align: center;
             line-height: 1.7;
         }
-
-        /* === STRATEGY BATTLE === */
         .strategy-note {
             margin: var(--gap-md) 0;
             padding: 1.1rem 1rem;
@@ -620,8 +605,6 @@ def inject_style() -> None:
         .strategy-desc { font-size: 1rem; color: #475569; font-weight: 600; line-height: 1.55; margin: 0 0 .55rem; }
         .strategy-bar-bg { height: .8rem; border-radius: 999px; background: #fee2e2; overflow: hidden; }
         .strategy-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f87171, #b91c1c); }
-
-        /* === MOBILE === */
         @media (max-width: 640px) {
             html, body, [class*="css"], .stApp, button, input, textarea, select { font-size: 17px !important; }
             .block-container { padding-left: .75rem; padding-right: .75rem; padding-top: .6rem; }
@@ -659,8 +642,6 @@ def inject_style() -> None:
             .lottery-ball { width: 2.4rem; height: 2.4rem; font-size: 1rem; }
             .ball-row div.stButton > button { min-height: 2.2rem !important; font-size: .9rem; }
         }
-
-        /* hide Material icon name that leaks as text in expander headers */
         [data-testid="stExpanderToggleIcon"] { display: none !important; }
         [data-testid="stIconMaterial"] { display: none !important; }
         </style>
@@ -675,7 +656,7 @@ def render_opening() -> None:
         <div class="hero">
           <div class="hero-kicker">給長輩的真心話</div>
           <h1>爸爸的樂透實驗</h1>
-          <p>我們把大家常聽到的明牌，全部拿去對對看歷年的開獎結果。<br/><strong>說句老實話：交給電腦選號就好，省下算牌的時間，多陪陪家人吧！</strong></p>
+          <p>我們把台灣人常用的那些算牌法，全部拿去對過十幾年來的開獎紀錄。<br/><strong>說句老實話：交給電腦選號就好，省下算牌的時間，多陪陪家人吧！</strong></p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -825,9 +806,9 @@ def render_loading_animation(numbers: list[int]) -> None:
     st.markdown(
         f"""
         <div class="loading-card">
-          <div class="loading-title">正在跑 12 年歷史資料…</div>
+          <div class="loading-title">正在對這十幾年來的答案…</div>
           <div class="loading-balls">{balls}</div>
-          <div class="loading-subtitle">正在把這組號碼一期一期重算，馬上給你看結果。</div>
+          <div class="loading-subtitle">電腦正在把這組號碼每一期都對過一遍，馬上就好。</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -867,7 +848,17 @@ def run_custom_backtest(numbers: list[int], draws: list[dict], game: GameDef) ->
     max_hits = int(records["命中數"].max()) if periods else 0
     exact_hits = int((records["命中數"] == game.main_pick).sum()) if periods else 0
     near_hits = int((records["命中數"] >= max(3, game.main_pick - 1)).sum()) if periods else 0
-    return CustomBacktest(periods, total_cost, total_prize, net, avg_hits, max_hits, exact_hits, near_hits, records)
+    return CustomBacktest(
+        periods,
+        total_cost,
+        total_prize,
+        net,
+        avg_hits,
+        max_hits,
+        exact_hits,
+        near_hits,
+        records,
+    )
 
 
 def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameDef) -> None:
@@ -882,33 +873,49 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         """,
         unsafe_allow_html=True,
     )
-    abs_loss = abs(result.net)
-    st.markdown(
-        f"""
-        <div class="loss-box">
-          <div class="quiet-note">如果這 {result.periods:,} 期你都照著買，<br/>一路買到現在會變成…</div>
-          <div class="loss-number">{format_money(result.net)}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    # 具象化損失：讓長輩「感受到」這筆錢能做什麼
-    if abs_loss > 0:
-        dinners = abs_loss // 300
-        trips = abs_loss // 15000
+
+    is_profit = result.net > 0
+    abs_amount = abs(result.net)
+
+    if is_profit:
+        st.markdown(
+            f"""
+            <div class="win-box">
+              <div class="quiet-note">要是這 {result.periods:,} 期你每一期都照著買，<br/>算到今天，你的錢會變成…</div>
+              <div class="win-number">+{format_money(result.net)}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div class="loss-box">
+              <div class="quiet-note">要是這 {result.periods:,} 期你每一期都照著買，<br/>算到今天，你的錢會變成…</div>
+              <div class="loss-number">{format_money(result.net)}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    if abs_amount > 0:
+        dinners = abs_amount // 300
+        trips = abs_amount // 15000
         tangible_parts = []
         if dinners >= 1:
-            tangible_parts.append(f'<span class="emoji">🍲</span> 請全家吃 <b>{dinners:,}</b> 頓好料')
+            tangible_parts.append(f'<span class="emoji">🍲</span> 全家吃 <b>{dinners:,}</b> 頓好料')
         if trips >= 1:
-            tangible_parts.append(f'<span class="emoji">✈️</span> 帶爸媽出去玩 <b>{trips:,}</b> 趟國內旅行')
+            tangible_parts.append(f'<span class="emoji">✈️</span> 帶爸媽去 <b>{trips:,}</b> 趟國內旅行')
         if tangible_parts:
+            lead = "這筆錢相當於⋯" if is_profit else "這些錢本來可以⋯"
             st.markdown(
                 '<div class="tangible-loss">'
-                '這些錢本來可以⋯<br/>'
+                + lead + '<br/>'
                 + '<br/>'.join(tangible_parts)
                 + '</div>',
                 unsafe_allow_html=True,
             )
+
     st.markdown(
         f"""
         <div class="stat-grid three">
@@ -920,36 +927,64 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         unsafe_allow_html=True,
     )
 
+    odds = jackpot_odds(game)
+    odds_text = f"中頭獎機率約 {jackpot_pct(odds)}" if odds else ""
+    jackpot_note = jackpot_assumption_text(game)
+    st.caption(f"📒 算法說明：{jackpot_note} 春節加碼、大紅包不納入計算。{odds_text}")
+
     expected_avg = game.main_pick * game.main_pick / game.main_pool
     diff = result.avg_hits - expected_avg
-    direction = "幾乎一模一樣" if abs(diff) < 0.05 else ("好一點點而已" if diff > 0 else "還比較差一點")
-    st.markdown(
-        f"""
-        <div class="verdict-card">
-          算下來，這組號碼平均每一期才中 <b>{result.avg_hits:.3f}</b> 顆球，<br/>
-          跟閉著眼睛用電腦選號（<b>{expected_avg:.3f}</b> 顆）其實差不多啦！<br/>
-          兩邊結果{direction}，<br/><u>最重要的一點是：不管是哪一種，到頭來都還是賠錢。</u>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    direction = "幾乎一樣" if abs(diff) < 0.05 else ("好一點點而已" if diff > 0 else "還比較差一點")
+
+    if is_profit:
+        if result.exact_hits >= 1:
+            luck_line = f"這 {result.periods:,} 期裡剛好抽到 {result.exact_hits} 次頭獎，才讓帳面看起來是正的。"
+        elif result.near_hits >= 1:
+            luck_line = f"這 {result.periods:,} 期裡剛好中了 {result.near_hits} 次大獎，才湊到正數的。"
+        else:
+            luck_line = f"這 {result.periods:,} 期下來小獎剛好累積到跨過本金。"
+        st.markdown(
+            f"""
+            <div class="verdict-card">
+              ⚠️ <b>先別太高興。</b><br/>
+              {luck_line}<br/>
+              中頭獎的機率是 {jackpot_pct(odds)}，下一期一樣從零開始。<br/>
+              你換組號碼或換個年份試試看就知道，大部分的結果都是賠錢收場。
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div class="verdict-card">
+              算下來，這組號碼平均每一期才中 <b>{result.avg_hits:.3f}</b> 顆球，<br/>
+              跟閉著眼睛讓電腦選（<b>{expected_avg:.3f}</b> 顆）其實差不多啦！<br/>
+              兩邊比起來{direction}。<br/><u>但最現實的是：管你用哪種方法，買到最後都是賠錢。</u>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     curve = go.Figure()
     chart_dates = pd.to_datetime(result.records["日期"], errors="coerce")
     chart_date_labels = [format_chinese_date(value) for value in chart_dates]
     chart_money_labels = [format_plain_money(int(value)) for value in result.records["累計損益"]]
+    line_color = "#15803d" if is_profit else "#dc2626"
     curve.add_trace(
         go.Scatter(
             x=chart_dates,
             y=result.records["累計損益"],
             customdata=list(zip(chart_date_labels, chart_money_labels, strict=True)),
             mode="lines",
-            line=dict(color="#dc2626", width=3),
+            line=dict(color=line_color, width=3),
             name="你的明牌累計損益",
             hovertemplate="日期：%{customdata[0]}<br>累計損益：%{customdata[1]}<extra></extra>",
         )
     )
-    tick_values, tick_labels = build_money_ticks(int(result.records["累計損益"].min()), 0)
+    chart_min = int(result.records["累計損益"].min())
+    chart_max = int(result.records["累計損益"].max())
+    tick_values, tick_labels = build_money_ticks(min(chart_min, 0), max(chart_max, 0))
     date_tick_values, date_tick_labels = build_date_ticks(chart_dates)
     curve.add_hline(y=0, line_dash="dash", line_color="#94a3b8")
     curve.update_layout(
@@ -960,25 +995,40 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         xaxis=dict(tickvals=date_tick_values, ticktext=date_tick_labels),
         yaxis=dict(tickvals=tick_values, ticktext=tick_labels),
     )
-    st.markdown(
-        f"""
-        <div class="simple-result-card">
-          <div class="simple-result-title">說句真心話：這組號碼真的沒有比較好中</div>
-          <div class="quiet-note">如果每一期都傻傻跟著買，<br/>辛苦賺來的錢就只會越來越少。</div>
-          <div class="loss-track"></div>
-          <div class="loss-track-labels"><span>開始：NT$ 0</span><span>現在：{format_money(result.net)}</span></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    # --- 分享小卡 ---
+    if is_profit:
+        st.markdown(
+            f"""
+            <div class="simple-result-card">
+              <div class="simple-result-title">帳面好看，是因為那幾次大獎撐起來的</div>
+              <div class="quiet-note">拿掉那幾次中獎，其他期加起來一樣是越買越少。<br/>
+                平均每期只中 <b>{result.avg_hits:.3f}</b> 顆球，跟電腦亂選的 <b>{expected_avg:.3f}</b> 顆差不多啦！</div>
+              <div class="loss-track-labels" style="margin-top: 1rem;">
+                <span>開始：NT$ 0</span><span>現在：+{format_money(result.net)}</span>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div class="simple-result-card">
+              <div class="simple-result-title">說句真心話：這組號碼沒有比較容易中</div>
+              <div class="quiet-note">要是每一期都傻傻跟著買，<br/>辛苦錢只會一點一滴變少而已。</div>
+              <div class="loss-track"></div>
+              <div class="loss-track-labels"><span>開始：NT$ 0</span><span>現在：{format_money(result.net)}</span></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.markdown(
         """
         <div class="share-cta">
-          <div class="share-cta-title">把這個結果傳給親朋好友</div>
+          <div class="share-cta-title">把結果傳給親朋好友</div>
           <div class="share-cta-body">
-            產生一張圖片，傳到賴（LINE）的家庭群組或是臉書。<br/>
-            提醒身邊的人，這世界上真的沒有穩中的明牌。
+            存成一張圖片，傳到賴（LINE）的家庭群組或是臉書。<br/>
+            提醒身邊的人，世界上真的沒有穩中的明牌。
           </div>
         </div>
         """,
@@ -1024,15 +1074,14 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
                 'target="_blank" rel="noopener noreferrer">💬 分享到 LINE</a>',
                 unsafe_allow_html=True,
             )
-        st.caption("💡 長按圖片也可以直接儲存或分享到任何 App")
-    # --- 走勢圖 ---
+        st.caption("💡 長按圖片也可以直接分享給其他 App")
+
     with st.expander("想看累計走勢圖（可跳過）"):
         st.plotly_chart(curve, width="stretch", config={"displayModeBar": False})
-        st.caption("獎金為簡化估算，已將特別號／第二區計入；頭獎金額會浮動，用途是看趨勢，不是精算實際金額。")
+        st.caption("獎金包含特別號／第二區；頭獎採近年平均單人實領估算（已假設多人均分）。春節加碼、大紅包不納入。用途是看長期趨勢，不是精算實際金額。")
 
 
 def render_bonus_wheel_section(game: GameDef, draws: list[dict]) -> None:
-    """包牌（僅特別號／第二區）試算：每期把整區號碼全買，看會賠多少。"""
     if game.code != "superlotto638":
         return
 
@@ -1069,17 +1118,15 @@ def render_bonus_wheel_section(game: GameDef, draws: list[dict]) -> None:
 
 
 def run_bonus_wheel_backtest(numbers: list[int], draws: list[dict], game: GameDef) -> CustomBacktest:
-    """每期買 bonus_pool 張票，每張只差第二區號碼，保證一定中第二區。"""
     rows = []
     cumulative_net = 0
     total_prize = 0
     bonus_pool = game.bonus_pool
-    ticket_cost = TICKET_COST[game.code] * bonus_pool  # 一期買 bonus_pool 張
+    ticket_cost = TICKET_COST[game.code] * bonus_pool
     pick_set = set(numbers)
     for index, draw in enumerate(draws, start=1):
         actual = set(draw["numbers"])
         hits = len(pick_set & actual)
-        # 整個第二區都包，必中 1 個第二區號碼，其餘 (bonus_pool - 1) 張是 bonus=0
         prize_winning_ticket = prize_for_hits(game, hits, 1)
         prize_other_tickets = prize_for_hits(game, hits, 0) * (bonus_pool - 1)
         prize = prize_winning_ticket + prize_other_tickets
@@ -1104,7 +1151,17 @@ def run_bonus_wheel_backtest(numbers: list[int], draws: list[dict], game: GameDe
     max_hits = int(records["命中數"].max()) if periods else 0
     exact_hits = int((records["命中數"] == game.main_pick).sum()) if periods else 0
     near_hits = int((records["命中數"] >= max(3, game.main_pick - 1)).sum()) if periods else 0
-    return CustomBacktest(periods, total_cost, total_prize, net, avg_hits, max_hits, exact_hits, near_hits, records)
+    return CustomBacktest(
+        periods,
+        total_cost,
+        total_prize,
+        net,
+        avg_hits,
+        max_hits,
+        exact_hits,
+        near_hits,
+        records,
+    )
 
 
 def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: GameDef) -> None:
@@ -1120,19 +1177,36 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
         """,
         unsafe_allow_html=True,
     )
-    st.markdown(
-        f"""
-        <div class="loss-box">
-          <div class="quiet-note">
-            這 {result.periods:,} 期下來，<br/>
-            每期都花 {format_money(cost_per_period)} 霸氣全包第二區，<br/>
-            雖然號稱「每期保證中普獎 100 元」，<br/>但其實…
-          </div>
-          <div class="loss-number">{format_money(result.net)}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+
+    is_profit = result.net > 0
+    if is_profit:
+        st.markdown(
+            f"""
+            <div class="win-box">
+              <div class="quiet-note">
+                這 {result.periods:,} 期下來，<br/>
+                每期花 {format_money(cost_per_period)} 全包第二區，<br/>
+                帳面上竟然是正的…
+              </div>
+              <div class="win-number">+{format_money(result.net)}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div class="loss-box">
+              <div class="quiet-note">
+                這 {result.periods:,} 期下來，<br/>
+                每期都花 {format_money(cost_per_period)} 霸氣全包第二區，<br/>
+                雖然號稱「每期保證中普獎 100 元」，<br/>但其實…
+              </div>
+              <div class="loss-number">{format_money(result.net)}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     st.markdown(
         f"""
         <div class="stat-grid three">
@@ -1143,23 +1217,36 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
         """,
         unsafe_allow_html=True,
     )
-    st.markdown(
-        """
-        <div class="verdict-card">
-          <b>全包確實保證中獎，<br/>但中一張 100 元，代表其他 7 張都是做白工，<br/>扣掉本金照樣賠。</b><br/>
-          以為靠「穩中」就能賺錢？這筆帳恐怕算錯囉。
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    # --- 包牌分享小卡 ---
+    st.caption(f"📒 算法說明：{jackpot_assumption_text(game)} 春節加碼、大紅包不納入計算。")
+    if is_profit:
+        st.markdown(
+            f"""
+            <div class="verdict-card">
+              ⚠️ <b>全包能賺，是因為這 {result.periods:,} 期裡剛好有抽到大獎。</b><br/>
+              其他 7 張都是陪跑的，沒中大獎的時候只能拿 100 元普獎。<br/>
+              拉長 12 年來看，絕大多數情況是賠的。
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="verdict-card">
+              <b>全包確實保證中獎，<br/>但中一張 100 元，代表其他 7 張都是做白工，<br/>扣掉本金照樣賠。</b><br/>
+              以為靠「穩中」就能賺錢？這算盤恐怕打錯囉。
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.markdown(
         """
         <div class="share-cta">
-          <div class="share-cta-title">把這個結果傳給親朋好友</div>
+          <div class="share-cta-title">把結果傳給親朋好友</div>
           <div class="share-cta-body">
-            把「全包也在賠」的真相產成一張圖，<br/>
-            傳給那些說「包牌穩中」的人看看！
+            把「全包也在賠」的真相存成一張圖，<br/>
+            傳給那些說「包牌穩中」的長輩或朋友看看！
           </div>
         </div>
         """,
@@ -1208,7 +1295,7 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
                 'target="_blank" rel="noopener noreferrer">💬 分享到 LINE</a>',
                 unsafe_allow_html=True,
             )
-        st.caption("💡 長按圖片也可以直接儲存或分享到任何 App")
+        st.caption("💡 長按圖片也可以直接儲存，或分享給其他 App")
 
 
 def prize_for_hits(game: GameDef, main_hits: int, bonus_hits: int = 0) -> int:
@@ -1216,7 +1303,39 @@ def prize_for_hits(game: GameDef, main_hits: int, bonus_hits: int = 0) -> int:
     return table.get((main_hits, bonus_hits), 0)
 
 
-# 優先使用倉庫內附的 Noto Sans TC；沒有可縮放中文字型時不要產生小方塊壞圖。
+def jackpot_odds(game: GameDef) -> int:
+    from math import comb
+
+    if game.main_pool <= 0 or game.main_pick <= 0:
+        return 0
+    main_combos = comb(game.main_pool, game.main_pick)
+    if game.code == "lotto649":
+        return main_combos
+    if game.code == "superlotto638":
+        return main_combos * max(1, game.bonus_pool)
+    return main_combos
+
+
+def jackpot_assumption_text(game: GameDef) -> str:
+    table = PRIZE_TABLE.get(game.code, {})
+    if game.code == "lotto649":
+        amount = table.get((6, 0), 0)
+        return (
+            f"頭獎金額採近 5 年大樂透「平均單人實領」估算（約 {_md_money(amount)}），"
+            "已假設多人均分。實際派彩有時上看 NT\\$ 1 億，也可能 1 人獨得，浮動很大。"
+        )
+    if game.code == "superlotto638":
+        amount = table.get((6, 1), 0)
+        return (
+            f"頭獎金額採近 5 年威力彩「平均單人實領」估算（約 {_md_money(amount)}），"
+            "已假設多人均分。實際派彩極端時可破 NT\\$ 20 億，也可能持續槓龜累積。"
+        )
+    return "頭獎金額為簡化估算。"
+
+
+def _md_money(value: int) -> str:
+    return format_money(value).replace("$", "\\$")
+
 _BUNDLED_FONT_PATH = ROOT / "assets" / "fonts" / "NotoSansTC-VF.ttf"
 _FONT_CANDIDATES = (
     _BUNDLED_FONT_PATH,
@@ -1229,7 +1348,7 @@ _FONT_CANDIDATES = (
 )
 _SHARE_CARD_WIDTH = 1080
 _SHARE_CARD_HEIGHT = 1200
-_SHARE_CARD_VERSION = 4
+_SHARE_CARD_VERSION = 5
 
 
 def _load_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -1238,7 +1357,6 @@ def _load_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
             font = ImageFont.truetype(str(candidate), size)
         except OSError:
             continue
-        # 變數字型：拉粗筆畫。一般字型不支援時直接略過。
         try:
             font.set_variation_by_axes([700.0 if bold else 400.0])
         except (AttributeError, OSError, TypeError, ValueError):
@@ -1345,181 +1463,7 @@ def _draw_money_box(
 
 
 def build_share_card(numbers: list[int], result: "CustomBacktest", game: GameDef) -> bytes:
-    """產生 1080×1200 的 PNG 分享小卡，帶圓角卡片框、落陰影與票根齒口裝飾。"""
-    width, height = _SHARE_CARD_WIDTH, _SHARE_CARD_HEIGHT
-
-    # ── 圖片底色：溫暖淺灰，讓卡片「浮」起來 ──
-    bg_color = (228, 224, 216, 255)
-    image = Image.new("RGBA", (width, height), color=bg_color)
-    draw = ImageDraw.Draw(image)
-
-    cx = width // 2
-    cm = 22       # 卡片到圖邊的邊距
-    card_r = 36   # 圓角半徑
-    header_h = cm + 246   # header 底部絕對 y（= 268）
-    footer_top = 1040     # footer 頂部絕對 y
-    gold = (248, 199, 74, 255)
-
-    def _dc(y: int, text: str, font: ImageFont.FreeTypeFont, fill: tuple[int, int, int, int]) -> None:
-        tw, _, _ = _text_size(draw, text, font)
-        draw.text((cx - tw // 2, y), text, font=font, fill=fill)
-
-    # ── 1. 卡片落陰影（偏移 + 半透明暖褐）──
-    draw.rounded_rectangle(
-        [(cm + 5, cm + 8), (width - cm + 5, height - cm + 8)],
-        radius=card_r,
-        fill=(60, 48, 36, 65),
-    )
-
-    # ── 2. 卡片本體（米白底色，帶圓角）──
-    draw.rounded_rectangle(
-        [(cm, cm), (width - cm, height - cm)],
-        radius=card_r,
-        fill=(255, 252, 245, 255),
-    )
-
-    # ── 3. 頂部紅色 Header（上圓角、下平）──
-    header_color = (153, 27, 27, 255)
-    draw.rounded_rectangle(
-        [(cm, cm), (width - cm, header_h)],
-        radius=card_r,
-        fill=header_color,
-    )
-    # 把 header 底部的圓角區域填平
-    draw.rectangle(
-        [(cm, header_h - card_r), (width - cm, header_h)],
-        fill=header_color,
-    )
-
-    # ── 4. 金色分隔線 ──
-    draw.rectangle([(cm, header_h), (width - cm, header_h + 5)], fill=gold)
-
-    # ── 5. 票根齒口（分隔線兩側各挖一個半圓，模仿實體票根）──
-    notch_r = 20
-    notch_y = header_h + 2
-    draw.ellipse(
-        [(cm - notch_r, notch_y - notch_r), (cm + notch_r, notch_y + notch_r)],
-        fill=bg_color,
-    )
-    draw.ellipse(
-        [(width - cm - notch_r, notch_y - notch_r), (width - cm + notch_r, notch_y + notch_r)],
-        fill=bg_color,
-    )
-
-    # ── 6. Footer（上平、下圓角）──
-    footer_color = (40, 35, 30, 255)
-    draw.rectangle(
-        [(cm, footer_top), (width - cm, footer_top + card_r)],
-        fill=footer_color,
-    )
-    draw.rounded_rectangle(
-        [(cm, footer_top), (width - cm, height - cm)],
-        radius=card_r,
-        fill=footer_color,
-    )
-
-    # ── 7. Header 文字 ──
-    title_font = _load_font(78, bold=True)
-    sub_font = _load_font(34)
-    tag_font = _load_font(28)
-    title_text = "爸爸的樂透實驗"
-    tw, _, _ = _text_size(draw, title_text, title_font)
-    _draw_shadowed_text(
-        draw, (cx - tw // 2, cm + 30), title_text, title_font,
-        (255, 255, 255, 255), shadow_fill=(80, 0, 0, 150), shadow_offset=(4, 4),
-    )
-    _dc(cm + 140, f"{game.name} · {result.periods:,} 期歷史回測", sub_font, gold)
-    _dc(cm + 192, "每一期都照著買，買到現在的真實結果", tag_font, (255, 220, 200, 255))
-
-    # ── 8. 號碼球 ──
-    ball_size = 100
-    gap = 16
-    total_w = len(numbers) * ball_size + (len(numbers) - 1) * gap
-    start_x = (width - total_w) // 2
-    ball_y = 292
-    ball_font = _load_font(50, bold=True)
-    for i, num in enumerate(numbers):
-        bx = start_x + i * (ball_size + gap)
-        _draw_number_ball(draw, bx, ball_y, num, ball_size, ball_font)
-
-    # ── 9. 敘事文字 ──
-    narrative_font = _load_font(36)
-    _dc(410, f"如果這 {result.periods:,} 期都照著買", narrative_font, (80, 75, 70, 255))
-    _dc(454, "一路買到現在會變成⋯", narrative_font, (80, 75, 70, 255))
-
-    # ── 10. 虧損金額框 ──
-    money_text = format_money(result.net)
-    money_font = _fit_font(draw, money_text, width - 240, 120, min_size=72, bold=True)
-    _draw_money_box(
-        draw,
-        cx=cx,
-        y=496,
-        text=money_text,
-        font=money_font,
-        box_fill=(255, 235, 235, 255),
-        text_fill=(185, 28, 28, 255),
-    )
-
-    # ── 11. 具象化損失 ──
-    abs_loss = abs(result.net)
-    tangible_font = _load_font(34, bold=True)
-    if abs_loss > 0:
-        dinners = abs_loss // 300
-        trips = abs_loss // 15000
-        lines: list[str] = []
-        if dinners >= 1:
-            lines.append(f"・這些錢能請全家吃 {dinners:,} 頓好料")
-        if trips >= 1:
-            lines.append(f"・能帶爸媽出去玩 {trips:,} 趟國內旅行")
-        for i, line in enumerate(lines[:2]):
-            _dc(705 + i * 52, line, tangible_font, (180, 100, 20, 255))
-
-    # ── 12. 三欄統計數字 ──
-    stat_label_y = 815
-    stat_value_y = 863
-    stat_label_font = _load_font(30)
-    stats = [
-        ("花了本金", format_money(result.total_cost)),
-        ("中獎領回", format_money(result.total_prize)),
-        ("頭獎次數", f"{result.exact_hits} 次"),
-    ]
-    col_count = 3
-    col_w = (width - 80) // col_count
-    base_x = 40
-    for i, (label, value) in enumerate(stats):
-        col_cx = base_x + i * col_w + col_w // 2
-        v_font = _fit_font(draw, value, col_w - 24, 38, min_size=26, bold=True)
-        lw, _, _ = _text_size(draw, label, stat_label_font)
-        vw, _, _ = _text_size(draw, value, v_font)
-        draw.text((col_cx - lw // 2, stat_label_y), label, font=stat_label_font, fill=(120, 115, 110, 255))
-        draw.text((col_cx - vw // 2, stat_value_y), value, font=v_font, fill=(30, 30, 30, 255))
-    for i in range(1, col_count):
-        sep_x = base_x + i * col_w
-        draw.line([(sep_x, stat_label_y - 4), (sep_x, stat_value_y + 50)],
-                  fill=(225, 215, 205, 255), width=2)
-
-    # ── 13. 主分隔線 ──
-    draw.line([(80, 940), (width - 80, 940)], fill=(225, 215, 205, 255), width=2)
-
-    # ── 14. 結語 CTA ──
-    cta_text = "交給電腦選就好，省下的時間多陪陪家人吧。"
-    cta_font = _fit_font(draw, cta_text, width - 120, 38, min_size=28, bold=True)
-    _dc(964, cta_text, cta_font, (153, 27, 27, 255))
-
-    # ── 15. Footer 品牌文字 ──
-    brand_font = _load_font(30, bold=True)
-    foot_font = _load_font(26)
-    _dc(footer_top + 30, "爸爸的樂透實驗 · 用資料破除明牌迷思", brand_font, gold)
-    _dc(footer_top + 80, "分享給身邊的親朋好友，別再花冤枉錢買明牌了", foot_font, (200, 195, 185, 255))
-
-    image = image.convert("RGB")
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG", optimize=True)
-    return buffer.getvalue()
-
-
-def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef) -> bytes:
-    """產生包牌（第二區全包）版本分享小卡，1080×1200，帶圓角卡片框與票根齒口。"""
+    """產生 1080×1200 分享小卡。"""
     width, height = _SHARE_CARD_WIDTH, _SHARE_CARD_HEIGHT
 
     bg_color = (228, 224, 216, 255)
@@ -1529,30 +1473,28 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
     cx = width // 2
     cm = 22
     card_r = 36
-    header_h = cm + 246   # = 268
-    footer_top = 1020
+    header_h = cm + 246
+    footer_top = 1040
     gold = (248, 199, 74, 255)
 
     def _dc(y: int, text: str, font: ImageFont.FreeTypeFont, fill: tuple[int, int, int, int]) -> None:
         tw, _, _ = _text_size(draw, text, font)
         draw.text((cx - tw // 2, y), text, font=font, fill=fill)
 
-    # ── 1. 卡片落陰影 ──
     draw.rounded_rectangle(
         [(cm + 5, cm + 8), (width - cm + 5, height - cm + 8)],
         radius=card_r,
         fill=(60, 48, 36, 65),
     )
 
-    # ── 2. 卡片本體 ──
     draw.rounded_rectangle(
         [(cm, cm), (width - cm, height - cm)],
         radius=card_r,
         fill=(255, 252, 245, 255),
     )
 
-    # ── 3. 頂部深藍 Header（上圓角、下平）──
-    header_color = (30, 58, 138, 255)
+    is_profit_card = result.net > 0
+    header_color = (21, 128, 61, 255) if is_profit_card else (153, 27, 27, 255)
     draw.rounded_rectangle(
         [(cm, cm), (width - cm, header_h)],
         radius=card_r,
@@ -1563,10 +1505,8 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         fill=header_color,
     )
 
-    # ── 4. 金色分隔線 ──
     draw.rectangle([(cm, header_h), (width - cm, header_h + 5)], fill=gold)
 
-    # ── 5. 票根齒口 ──
     notch_r = 20
     notch_y = header_h + 2
     draw.ellipse(
@@ -1578,7 +1518,6 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         fill=bg_color,
     )
 
-    # ── 6. Footer（上平、下圓角）──
     footer_color = (40, 35, 30, 255)
     draw.rectangle(
         [(cm, footer_top), (width - cm, footer_top + card_r)],
@@ -1590,19 +1529,21 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         fill=footer_color,
     )
 
-    # ── 7. Header 文字 ──
     title_font = _load_font(78, bold=True)
     sub_font = _load_font(34)
     tag_font = _load_font(28)
-    tw, _, _ = _text_size(draw, "爸爸的樂透實驗", title_font)
+    title_text = "爸爸的樂透實驗"
+    tw, _, _ = _text_size(draw, title_text, title_font)
+    title_shadow = (0, 50, 20, 150) if is_profit_card else (80, 0, 0, 150)
     _draw_shadowed_text(
-        draw, (cx - tw // 2, cm + 30), "爸爸的樂透實驗", title_font,
-        (255, 255, 255, 255), shadow_fill=(0, 20, 80, 150), shadow_offset=(4, 4),
+        draw, (cx - tw // 2, cm + 30), title_text, title_font,
+        (255, 255, 255, 255), shadow_fill=title_shadow, shadow_offset=(4, 4),
     )
-    _dc(cm + 140, f"{game.name} · 包第二區全包 · {result.periods:,} 期回測", sub_font, gold)
-    _dc(cm + 192, "每期花 8 倍本金全包第二區，到底賺還是賠？", tag_font, (200, 220, 255, 255))
+    _dc(cm + 140, f"{game.name} · {result.periods:,} 期歷史回測", sub_font, gold)
+    tagline = "帳面好看，靠的是那幾次大獎撐出來的" if is_profit_card else "每一期都照著買，買到現在的真實結果"
+    tagline_color = (220, 255, 230, 255) if is_profit_card else (255, 220, 200, 255)
+    _dc(cm + 192, tagline, tag_font, tagline_color)
 
-    # ── 8. 號碼球 ──
     ball_size = 100
     gap = 16
     total_w = len(numbers) * ball_size + (len(numbers) - 1) * gap
@@ -1613,43 +1554,42 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         bx = start_x + i * (ball_size + gap)
         _draw_number_ball(draw, bx, ball_y, num, ball_size, ball_font)
 
-    # 「＋第二區 1–8 全包」標籤
-    label_font = _load_font(32, bold=True)
-    _dc(398, "＋ 第二區 1 ～ 8  全包", label_font, (30, 58, 138, 255))
-
-    # ── 9. 敘事文字 ──
     narrative_font = _load_font(36)
-    cost_per = TICKET_COST[game.code] * game.bonus_pool
-    _dc(438, f"每期花 {format_money(cost_per)} 全包，{result.periods:,} 期下來⋯", narrative_font, (80, 75, 70, 255))
+    if is_profit_card:
+        _dc(410, f"這 {result.periods:,} 期下來帳面是正的", narrative_font, (80, 75, 70, 255))
+        _dc(454, "但拿掉那幾次大獎，其實一樣在賠", narrative_font, (80, 75, 70, 255))
+    else:
+        _dc(410, f"要是這 {result.periods:,} 期每一期都照著買", narrative_font, (80, 75, 70, 255))
+        _dc(454, "算到今天你的錢會變成⋯", narrative_font, (80, 75, 70, 255))
 
-    # ── 10. 虧損金額框 ──
-    money_text = format_money(result.net)
+    money_text = ("+" if is_profit_card else "") + format_money(result.net)
     money_font = _fit_font(draw, money_text, width - 240, 120, min_size=72, bold=True)
+    box_fill = (220, 252, 231, 255) if is_profit_card else (255, 235, 235, 255)
+    text_fill = (21, 128, 61, 255) if is_profit_card else (185, 28, 28, 255)
     _draw_money_box(
         draw,
         cx=cx,
-        y=498,
+        y=496,
         text=money_text,
         font=money_font,
-        box_fill=(235, 240, 255, 255),
-        text_fill=(30, 58, 138, 255),
+        box_fill=box_fill,
+        text_fill=text_fill,
     )
 
-    # ── 11. 具象化損失 ──
-    abs_loss = abs(result.net)
+    abs_amount = abs(result.net)
     tangible_font = _load_font(34, bold=True)
-    if abs_loss > 0:
-        dinners = abs_loss // 300
-        trips = abs_loss // 15000
+    if abs_amount > 0:
+        dinners = abs_amount // 300
+        trips = abs_amount // 15000
         lines: list[str] = []
+        prefix = "・這筆錢相當於" if is_profit_card else "・這些錢能"
         if dinners >= 1:
-            lines.append(f"・這些錢能請全家吃 {dinners:,} 頓好料")
+            lines.append(f"{prefix}替家裡加菜 {dinners:,} 次")
         if trips >= 1:
-            lines.append(f"・能帶爸媽出去玩 {trips:,} 趟國內旅行")
+            lines.append(f"{prefix}帶爸媽出去玩 {trips:,} 趟國內旅行")
         for i, line in enumerate(lines[:2]):
             _dc(705 + i * 52, line, tangible_font, (180, 100, 20, 255))
 
-    # ── 12. 三欄統計數字 ──
     stat_label_y = 815
     stat_value_y = 863
     stat_label_font = _load_font(30)
@@ -1673,19 +1613,194 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         draw.line([(sep_x, stat_label_y - 4), (sep_x, stat_value_y + 50)],
                   fill=(225, 215, 205, 255), width=2)
 
-    # ── 13. 主分隔線 ──
     draw.line([(80, 940), (width - 80, 940)], fill=(225, 215, 205, 255), width=2)
 
-    # ── 14. 結語 CTA ──
-    cta_text = "包牌不是秘訣，只是賠更多的方法。"
+    if is_profit_card:
+        cta_text = f"中頭獎機率 {jackpot_pct(jackpot_odds(game))}，別把好運當實力。"
+    else:
+        cta_text = "交給電腦選就好，省下的時間多陪陪家人吧。"
     cta_font = _fit_font(draw, cta_text, width - 120, 38, min_size=28, bold=True)
-    _dc(964, cta_text, cta_font, (30, 58, 138, 255))
+    cta_color = (21, 128, 61, 255) if is_profit_card else (153, 27, 27, 255)
+    _dc(964, cta_text, cta_font, cta_color)
 
-    # ── 15. Footer 品牌文字 ──
     brand_font = _load_font(30, bold=True)
     foot_font = _load_font(26)
     _dc(footer_top + 30, "爸爸的樂透實驗 · 用資料破除明牌迷思", brand_font, gold)
-    _dc(footer_top + 80, "分享給身邊的親朋好友，別再花冤枉錢買明牌了", foot_font, (200, 195, 185, 255))
+    _dc(footer_top + 80, "傳給身邊的親朋好友，別再花冤枉錢買明牌了", foot_font, (200, 195, 185, 255))
+
+    image = image.convert("RGB")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG", optimize=True)
+    return buffer.getvalue()
+
+
+def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef) -> bytes:
+    """產生包牌（第二區全包）版本分享小卡。"""
+    width, height = _SHARE_CARD_WIDTH, _SHARE_CARD_HEIGHT
+
+    bg_color = (228, 224, 216, 255)
+    image = Image.new("RGBA", (width, height), color=bg_color)
+    draw = ImageDraw.Draw(image)
+
+    cx = width // 2
+    cm = 22
+    card_r = 36
+    header_h = cm + 246
+    footer_top = 1020
+    gold = (248, 199, 74, 255)
+
+    def _dc(y: int, text: str, font: ImageFont.FreeTypeFont, fill: tuple[int, int, int, int]) -> None:
+        tw, _, _ = _text_size(draw, text, font)
+        draw.text((cx - tw // 2, y), text, font=font, fill=fill)
+
+    draw.rounded_rectangle(
+        [(cm + 5, cm + 8), (width - cm + 5, height - cm + 8)],
+        radius=card_r,
+        fill=(60, 48, 36, 65),
+    )
+
+    draw.rounded_rectangle(
+        [(cm, cm), (width - cm, height - cm)],
+        radius=card_r,
+        fill=(255, 252, 245, 255),
+    )
+
+    is_profit_card = result.net > 0
+    header_color = (21, 128, 61, 255) if is_profit_card else (30, 58, 138, 255)
+    draw.rounded_rectangle(
+        [(cm, cm), (width - cm, header_h)],
+        radius=card_r,
+        fill=header_color,
+    )
+    draw.rectangle(
+        [(cm, header_h - card_r), (width - cm, header_h)],
+        fill=header_color,
+    )
+
+    draw.rectangle([(cm, header_h), (width - cm, header_h + 5)], fill=gold)
+
+    notch_r = 20
+    notch_y = header_h + 2
+    draw.ellipse(
+        [(cm - notch_r, notch_y - notch_r), (cm + notch_r, notch_y + notch_r)],
+        fill=bg_color,
+    )
+    draw.ellipse(
+        [(width - cm - notch_r, notch_y - notch_r), (width - cm + notch_r, notch_y + notch_r)],
+        fill=bg_color,
+    )
+
+    footer_color = (40, 35, 30, 255)
+    draw.rectangle(
+        [(cm, footer_top), (width - cm, footer_top + card_r)],
+        fill=footer_color,
+    )
+    draw.rounded_rectangle(
+        [(cm, footer_top), (width - cm, height - cm)],
+        radius=card_r,
+        fill=footer_color,
+    )
+
+    title_font = _load_font(78, bold=True)
+    sub_font = _load_font(34)
+    tag_font = _load_font(28)
+    tw, _, _ = _text_size(draw, "爸爸的樂透實驗", title_font)
+    title_shadow = (0, 50, 20, 150) if is_profit_card else (0, 20, 80, 150)
+    _draw_shadowed_text(
+        draw, (cx - tw // 2, cm + 30), "爸爸的樂透實驗", title_font,
+        (255, 255, 255, 255), shadow_fill=title_shadow, shadow_offset=(4, 4),
+    )
+    _dc(cm + 140, f"{game.name} · 包第二區全包 · {result.periods:,} 期回測", sub_font, gold)
+    tag_text = "帳面能正，全靠那幾次大獎撐起來的" if is_profit_card else "每期花 8 倍本金全包第二區，到底賺還是賠？"
+    tag_color = (220, 255, 230, 255) if is_profit_card else (200, 220, 255, 255)
+    _dc(cm + 192, tag_text, tag_font, tag_color)
+
+    ball_size = 100
+    gap = 16
+    total_w = len(numbers) * ball_size + (len(numbers) - 1) * gap
+    start_x = (width - total_w) // 2
+    ball_y = 292
+    ball_font = _load_font(50, bold=True)
+    for i, num in enumerate(numbers):
+        bx = start_x + i * (ball_size + gap)
+        _draw_number_ball(draw, bx, ball_y, num, ball_size, ball_font)
+
+    label_font = _load_font(32, bold=True)
+    label_color = (21, 128, 61, 255) if is_profit_card else (30, 58, 138, 255)
+    _dc(398, "＋ 第二區 1 ～ 8  全包", label_font, label_color)
+
+    narrative_font = _load_font(36)
+    cost_per = TICKET_COST[game.code] * game.bonus_pool
+    if is_profit_card:
+        _dc(438, f"每期花 {format_money(cost_per)} 全包，帳面上竟然是正的⋯", narrative_font, (80, 75, 70, 255))
+    else:
+        _dc(438, f"每期花 {format_money(cost_per)} 全包，{result.periods:,} 期下來⋯", narrative_font, (80, 75, 70, 255))
+
+    money_text = ("+" if is_profit_card else "") + format_money(result.net)
+    money_font = _fit_font(draw, money_text, width - 240, 120, min_size=72, bold=True)
+    box_fill = (220, 252, 231, 255) if is_profit_card else (235, 240, 255, 255)
+    text_fill = (21, 128, 61, 255) if is_profit_card else (30, 58, 138, 255)
+    _draw_money_box(
+        draw,
+        cx=cx,
+        y=498,
+        text=money_text,
+        font=money_font,
+        box_fill=box_fill,
+        text_fill=text_fill,
+    )
+
+    abs_amount = abs(result.net)
+    tangible_font = _load_font(34, bold=True)
+    if abs_amount > 0:
+        dinners = abs_amount // 300
+        trips = abs_amount // 15000
+        lines: list[str] = []
+        prefix = "・這筆錢相當於" if is_profit_card else "・這些錢能"
+        if dinners >= 1:
+            lines.append(f"{prefix}替家裡加菜 {dinners:,} 次")
+        if trips >= 1:
+            lines.append(f"{prefix}帶爸媽出去玩 {trips:,} 趟國內旅行")
+        for i, line in enumerate(lines[:2]):
+            _dc(705 + i * 52, line, tangible_font, (180, 100, 20, 255))
+
+    stat_label_y = 815
+    stat_value_y = 863
+    stat_label_font = _load_font(30)
+    stats = [
+        ("花了本金", format_money(result.total_cost)),
+        ("中獎領回", format_money(result.total_prize)),
+        ("頭獎次數", f"{result.exact_hits} 次"),
+    ]
+    col_count = 3
+    col_w = (width - 80) // col_count
+    base_x = 40
+    for i, (label, value) in enumerate(stats):
+        col_cx = base_x + i * col_w + col_w // 2
+        v_font = _fit_font(draw, value, col_w - 24, 38, min_size=26, bold=True)
+        lw, _, _ = _text_size(draw, label, stat_label_font)
+        vw, _, _ = _text_size(draw, value, v_font)
+        draw.text((col_cx - lw // 2, stat_label_y), label, font=stat_label_font, fill=(120, 115, 110, 255))
+        draw.text((col_cx - vw // 2, stat_value_y), value, font=v_font, fill=(30, 30, 30, 255))
+    for i in range(1, col_count):
+        sep_x = base_x + i * col_w
+        draw.line([(sep_x, stat_label_y - 4), (sep_x, stat_value_y + 50)],
+                  fill=(225, 215, 205, 255), width=2)
+
+    draw.line([(80, 940), (width - 80, 940)], fill=(225, 215, 205, 255), width=2)
+
+    if is_profit_card:
+        cta_text = "全包能賺，全靠運氣抽中大獎而已。"
+    else:
+        cta_text = "包牌不是秘訣，只是賠更多的方法。"
+    cta_font = _fit_font(draw, cta_text, width - 120, 38, min_size=28, bold=True)
+    cta_color = (21, 128, 61, 255) if is_profit_card else (30, 58, 138, 255)
+    _dc(964, cta_text, cta_font, cta_color)
+
+    brand_font = _load_font(30, bold=True)
+    foot_font = _load_font(26)
+    _dc(footer_top + 30, "爸爸的樂透實驗 · 用資料破除明牌迷思", brand_font, gold)
+    _dc(footer_top + 80, "傳給身邊的親朋好友，別再花冤枉錢買明牌了", foot_font, (200, 195, 185, 255))
 
     image = image.convert("RGB")
     buffer = io.BytesIO()
@@ -1701,6 +1816,19 @@ def format_money(value: int) -> str:
 def format_plain_money(value: int) -> str:
     sign = "-" if value < 0 else ""
     return f"{sign}{abs(value):,} 元"
+
+
+def jackpot_pct(odds: int) -> str:
+    """把 1/odds 換算成百分比，自動保留 2 個有效數字。"""
+    if not odds:
+        return ""
+    import math
+    pct = 1 / odds * 100
+    if pct >= 1:
+        return f"{pct:.1f}%"
+    mag = math.floor(math.log10(pct))
+    decimals = -mag + 1
+    return f"{pct:.{decimals}f}%"
 
 
 def format_chinese_date(value: pd.Timestamp | dt.datetime | dt.date | None) -> str:
@@ -1723,10 +1851,22 @@ def build_date_ticks(dates: pd.Series) -> tuple[list[pd.Timestamp], list[str]]:
 
 
 def build_money_ticks(min_value: int, max_value: int) -> tuple[list[int], list[str]]:
-    bottom = (min_value // 10_000) * 10_000
+    span = max(1, max_value - min_value)
+    target_ticks = 6
+    raw_step = span / target_ticks
+    # 把刻度間距吸到 1/2/5 × 10^n，避免頭獎落在 +30M 時生出上千個刻度直接卡死瀏覽器。
+    magnitude = 10 ** max(0, len(str(int(raw_step))) - 1)
+    for multiplier in (1, 2, 5, 10):
+        step = multiplier * magnitude
+        if step >= raw_step:
+            break
+    else:
+        step = magnitude * 10
+    bottom = (min_value // step) * step
     if bottom > min_value:
-        bottom -= 10_000
-    tick_values = list(range(bottom, max_value + 1, 10_000))
+        bottom -= step
+    top = ((max_value // step) + 1) * step
+    tick_values = list(range(bottom, top + 1, step))
     if max_value not in tick_values:
         tick_values.append(max_value)
     return tick_values, [format_plain_money(value) for value in tick_values]
@@ -1776,7 +1916,7 @@ def render_strategy_battle(
         data_path,
         data_mtime,
         min_history,
-        cache_version=3,
+        cache_version=5,
     )
     loading_slot.empty()
 
@@ -1845,7 +1985,7 @@ def run_strategy_battle_cached(
     data_path: str,
     data_mtime: float,
     min_history: int,
-    cache_version: int = 3,
+    cache_version: int = 5,
 ) -> pd.DataFrame:
     del data_mtime, cache_version
     game = get_game(game_code)
@@ -1877,12 +2017,21 @@ def run_strategy_battle_cached(
 
 def render_backtest_explainer() -> None:
     st.markdown(
-        """
-        **怎麼算：** 每一期開獎前，先把答案蓋住，
-        只用前面的資料選號，再對答案。每一期都照同樣規則重跑。
-
-        這樣可以避免開獎後才說「早知道應該買這組」的事後解釋。
-        """
+        "\n".join(
+            [
+                "**電腦是怎麼算的？**",
+                "",
+                "為了公平起見，每一期開獎前，我們都會先把答案蓋住，",
+                "只用以前開過的號碼來猜，猜完再對答案。這樣一期一期算下來，",
+                "就不會有那種「早知道我就買什麼」的馬後炮。",
+                "",
+                "**關於獎金估算：**",
+                "",
+                "- 像頭獎、貳獎這種沒有固定金額的，我們是拿近五年的「平均一個人實領多少」來算（已經把這筆錢會被幾個人平分的情況考慮進去了），其他小獎就照官方的固定金額。",
+                "- 至於過年加碼的大紅包，因為每年規則都在變，有些資料也沒有保留，所以就**沒有算進去**。算下來一注大概差不了幾十塊，根本動搖不了「長期一直在賠錢」的現實。",
+                "- 反正樂透這東西，獎金多寡本來就都會浮動，這算出來的只是一個**長期趨勢**，讓你看看一直買會發生什麼事。",
+            ]
+        )
     )
 
 
@@ -1892,7 +2041,7 @@ def render_footer_warning() -> None:
         <div class="warning-line">
           買彩券是一種樂趣，但千萬別迷信明牌，<br/>
           因為開獎號碼說到底就只是機率而已。<br/>
-          <span style="font-size:.9em; opacity:.85;">把買明牌的錢省下來，帶家人去吃頓好料的吧！</span>
+          <span style="font-size:.9em; opacity:.85;">把買明牌的錢省下來，帶家人去吃頓好料吧！</span>
         </div>
         """,
         unsafe_allow_html=True,
