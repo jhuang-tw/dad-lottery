@@ -171,7 +171,7 @@ def main() -> None:
         return
 
     draws = load_draws_cached(game_code, str(data_path), os.path.getmtime(data_path))
-    st.caption(f"目前有 {game.name} 共 {len(draws):,} 期開獎紀錄。")
+    st.caption(f"目前收錄 {game.name} {len(draws):,} 期開獎紀錄。")
 
     render_custom_challenge(game, draws)
 
@@ -267,7 +267,7 @@ def inject_style() -> None:
             margin: 0 0 .9rem;
             color: #fff;
             font-size: clamp(2.15rem, 7vw, 3.5rem);
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1.15;
             letter-spacing: -.015em;
         }
@@ -302,7 +302,7 @@ def inject_style() -> None:
             margin: var(--gap-xl) 0 var(--gap-sm);
             color: var(--lotry-ink);
             font-size: 1.32rem;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: -.02em;
         }
         .step-label::before {
@@ -337,7 +337,7 @@ def inject_style() -> None:
             margin: 0 0 .5rem;
             color: var(--lotry-ink);
             font-size: 1.35rem;
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1.35;
             letter-spacing: -.02em;
         }
@@ -350,7 +350,7 @@ def inject_style() -> None:
             line-height: 1.75;
         }
         div[data-testid="stRadio"] { margin-bottom: .35rem; }
-        div[data-testid="stRadio"] label { font-size: 1rem !important; font-weight: 650 !important; }
+        div[data-testid="stRadio"] label { font-size: 1rem !important; font-weight: 600 !important; }
         [data-testid="stCaptionContainer"] {
             margin: .25rem 0 1rem;
             color: var(--lotry-muted) !important;
@@ -960,7 +960,7 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
 
     expected_avg = game.main_pick * game.main_pick / game.main_pool
     diff = result.avg_hits - expected_avg
-    direction = "和隨機差不多" if abs(diff) < 0.05 else ("比隨機高一點" if diff > 0 else "比隨機低一點")
+    comparison = "兩個數字很接近" if abs(diff) < 0.05 else ("這組號碼高一點" if diff > 0 else "這組號碼低一點")
 
     if is_profit:
         if result.exact_hits >= 1:
@@ -984,7 +984,7 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
             f"""
             <div class="verdict-card">
               這組號碼平均每期對中 <b>{result.avg_hits:.3f}</b> 個主區號碼，隨機選號理論上約為 <b>{expected_avg:.3f}</b>。<br/>
-              兩者{direction}。<br/><u>從這段歷史紀錄，看不出它有能重複出現的優勢。</u>
+              {comparison}。<br/><u>從這段歷史紀錄，看不出它有能重複出現的優勢。</u>
             </div>
             """,
             unsafe_allow_html=True,
