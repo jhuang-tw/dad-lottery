@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/runner/work/dad-lottery/dad-lottery/scripts/refine_copy_typography.py", line 359, in <module>
+    main()
+  File "/home/runner/work/dad-lottery/dad-lottery/scripts/refine_copy_typography.py", line 332, in main
+    text = replace_exact(text, old, new, label, expected[0] if expected else 1)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/dad-lottery/dad-lottery/scripts/refine_copy_typography.py", line 15, in replace_exact
+    raise RuntimeError(f"{label}: expected {expected} match(es), found {count}")
+RuntimeError: card disclaimer: expected 1 match(es), found 2
+exit_status=1
