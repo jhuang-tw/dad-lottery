@@ -1,18 +1,20 @@
 name: Refine copy and typography
 
 on:
-  push:
+  pull_request:
     branches:
-      - polish/readme-web-copy
-    paths:
-      - scripts/refine_copy_typography.py
-      - .github/workflows/refine-copy-typography.yml
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   refine:
+    if: github.head_ref == 'polish/readme-web-copy'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
