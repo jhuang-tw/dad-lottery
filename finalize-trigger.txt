@@ -1,1 +1,0 @@
-Run the registered cleanup workflow.
