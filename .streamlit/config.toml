@@ -1,0 +1,13 @@
+[server]
+enableStaticServing = true
+
+[[theme.fontFaces]]
+family = "lotry-sans"
+url = "app/static/fonts/NotoSansTC-VF.ttf"
+style = "normal"
+weight = "100 900"
+
+[theme]
+font = "lotry-sans"
+headingFont = "lotry-sans"
+baseFontSize = 16

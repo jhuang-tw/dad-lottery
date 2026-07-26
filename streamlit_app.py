@@ -56,11 +56,11 @@ STRATEGY_REPRESENTATIVES = {
 FAST_STRATEGIES = list(STRATEGY_REPRESENTATIVES.values()) + [BASELINE_STRATEGY]
 
 STRATEGY_GROUP_DESCRIPTIONS = {
-    "電腦選號": "電腦隨機亂選，不看任何規則。",
-    "追熱號": "看哪幾個號碼最近常開，就跟著買。",
-    "反著買": "別人常買的我不買，改挑冷門號碼。",
-    "農民曆": "看農民曆、干支、五行來挑號碼。",
-    "看新聞挑": "把今天日期、社會大事變成號碼。",
+    "電腦選號": "完全隨機，不參考過去開獎紀錄。",
+    "追熱號": "挑最近比較常開的號碼。",
+    "反著買": "避開熱門選法，改選較少人注意的號碼。",
+    "農民曆": "用農曆、干支和五行換算號碼。",
+    "看新聞挑": "把日期或新聞事件裡的數字拿來選號。",
 }
 
 GAME_OPTIONS = {
@@ -146,7 +146,7 @@ class CustomBacktest:
 
 def main() -> None:
     st.set_page_config(
-        page_title="爸爸的樂透實驗｜電腦選號就好，省下的時間多陪陪家人吧",
+        page_title="爸爸的樂透實驗｜十多年資料，看看選號到底有沒有用",
         page_icon="🎲",
         layout="centered",
         initial_sidebar_state="collapsed",
@@ -155,7 +155,7 @@ def main() -> None:
 
     render_opening()
 
-    st.markdown('<div class="step-label">1. 先選遊戲</div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-label">先選一個遊戲</div>', unsafe_allow_html=True)
     game_label = st.radio(
         "選擇遊戲",
         list(GAME_OPTIONS.keys()),
@@ -171,12 +171,12 @@ def main() -> None:
         return
 
     draws = load_draws_cached(game_code, str(data_path), os.path.getmtime(data_path))
-    st.caption(f"使用 {game.name} 全部資料，共 {len(draws):,} 期。")
+    st.caption(f"目前收錄 {game.name} {len(draws):,} 期開獎紀錄。")
 
     render_custom_challenge(game, draws)
 
     strategy_toggle_key = f"show_strategy_{game.code}"
-    with st.expander("想知道怎麼算？（可跳過）", expanded=st.session_state.get(strategy_toggle_key, False)):
+    with st.expander("這個實驗怎麼算？", expanded=st.session_state.get(strategy_toggle_key, False)):
         render_backtest_explainer()
         render_strategy_battle(game, str(data_path), os.path.getmtime(data_path), len(draws), strategy_toggle_key)
 
@@ -188,357 +188,429 @@ def inject_style() -> None:
         """
         <style>
         :root {
-            --lotry-red: #cf2e2e;
-            --lotry-red-dark: #991b1b;
-            --lotry-gold: #f8c74a;
-            --lotry-ink: #172033;
-            --lotry-muted: #667085;
-            --lotry-paper: #fffaf2;
-            --gap-xs: .4rem;
+            --lotry-accent: #a7443a;
+            --lotry-accent-dark: #7f302a;
+            --lotry-gold: #c69b52;
+            --lotry-ink: #24262b;
+            --lotry-muted: #6e7077;
+            --lotry-surface: #ffffff;
+            --lotry-canvas: #f6f3ee;
+            --lotry-border: #e4ded5;
+            --lotry-success: #257052;
+            --lotry-danger: #a7443a;
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --shadow-sm: 0 8px 24px rgba(47, 39, 31, .06);
+            --shadow-md: 0 18px 48px rgba(47, 39, 31, .10);
+            --gap-xs: .45rem;
             --gap-sm: .8rem;
-            --gap-md: 1.2rem;
-            --gap-lg: 1.8rem;
-            --gap-xl: 2.6rem;
-            --radius: 14px;
-            --border-strong: 2px solid #172033;
-            --border-soft: 1px solid #e5e0d4;
+            --gap-md: 1.25rem;
+            --gap-lg: 1.9rem;
+            --gap-xl: 3rem;
         }
         .stApp {
-            background: linear-gradient(180deg, #fff7ed 0%, #ffffff 38%, #eef2ff 100%);
+            color: var(--lotry-ink);
+            background:
+                radial-gradient(circle at 15% 0%, rgba(198, 155, 82, .13), transparent 28rem),
+                linear-gradient(180deg, #fbfaf8 0%, var(--lotry-canvas) 100%);
         }
         .block-container {
-            padding-top: 1rem;
-            padding-bottom: 3rem;
-            padding-left: 1rem;
-            padding-right: 1rem;
-            max-width: 720px;
+            max-width: 820px;
+            padding: 1.5rem 1.15rem 4rem;
         }
         #MainMenu, footer, [data-testid="stToolbar"] { display: none !important; }
         header { visibility: hidden; height: 0; }
         html, body, [class*="css"], .stApp, button, input, textarea, select {
-            font-family: "Microsoft JhengHei", "Noto Sans TC", "PingFang TC", Arial, sans-serif !important;
-            font-size: 17px;
+            font-family: "lotry-sans", "PingFang TC", "Microsoft JhengHei UI", "Microsoft JhengHei", sans-serif !important;
+            font-size: 16px;
+            font-synthesis: none;
             letter-spacing: 0;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
         }
         .hero {
             position: relative;
             overflow: hidden;
-            padding: 1.8rem 1.5rem 2rem;
-            background: #991b1b;
-            border-radius: var(--radius);
+            padding: clamp(1.7rem, 4vw, 2.6rem);
             margin: 0 0 var(--gap-xl);
-            color: #ffffff;
-            box-shadow: 0 6px 18px rgba(153, 27, 27, 0.18);
+            color: #fff;
+            background:
+                linear-gradient(135deg, rgba(127, 48, 42, .96), rgba(49, 39, 37, .97)),
+                radial-gradient(circle at 85% 15%, rgba(198, 155, 82, .5), transparent 18rem);
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -5rem -8rem auto;
+            width: 18rem;
+            height: 18rem;
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 50%;
         }
         .hero-kicker {
-            display: inline-block;
-            font-size: .95rem;
-            font-weight: 900;
-            color: #f8c74a;
-            margin-bottom: .8rem;
-            letter-spacing: .08em;
-            padding: .25rem .6rem;
-            border: 1.5px solid rgba(248, 199, 74, .55);
-            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            margin-bottom: 1rem;
+            color: #f1d8a7;
+            font-size: .82rem;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: none;
         }
         .hero h1 {
-            margin: 0 0 1rem 0;
-            letter-spacing: 0;
-            font-size: clamp(2rem, 7vw, 3rem);
-            line-height: 1.2;
-            font-weight: 900;
+            max-width: 650px;
+            margin: 0 0 .9rem;
+            color: #fff;
+            font-size: clamp(2.15rem, 7vw, 3.5rem);
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -.015em;
         }
         .hero p {
-            font-size: 1.15rem;
-            line-height: 1.75;
+            max-width: 650px;
             margin: 0;
-            font-weight: 600;
-            color: #ffffff;
+            color: rgba(255, 255, 255, .84);
+            font-size: 1.04rem;
+            font-weight: 400;
+            line-height: 1.8;
         }
         .hero strong {
-            display: block;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1.5px solid rgba(248, 199, 74, .35);
-            color: #f8c74a;
-            font-size: 1.1rem;
-            font-weight: 900;
-            line-height: 1.65;
+            color: #fff;
+            font-weight: 700;
+        }
+        .hero-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .55rem;
+            margin-top: 1.4rem;
+        }
+        .hero-meta span {
+            padding: .38rem .65rem;
+            color: rgba(255, 255, 255, .9);
+            background: rgba(255, 255, 255, .09);
+            border: 1px solid rgba(255, 255, 255, .14);
+            border-radius: 999px;
+            font-size: .83rem;
+            font-weight: 600;
         }
         .step-label {
-            color: #000000;
-            font-size: 1.4rem;
-            font-weight: 900;
             margin: var(--gap-xl) 0 var(--gap-sm);
-            border-left: 6px solid #cf2e2e;
-            padding-left: 12px;
+            color: var(--lotry-ink);
+            font-size: 1.32rem;
+            font-weight: 700;
+            letter-spacing: -.02em;
         }
-        .step-label:first-child { margin-top: 0; }
-        .section-card {
-            padding: 1.4rem 1.3rem;
-            border: var(--border-strong);
-            border-radius: var(--radius);
-            background: #ffffff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        .step-label::before {
+            content: "";
+            display: inline-block;
+            width: .55rem;
+            height: .55rem;
+            margin-right: .55rem;
+            vertical-align: .12rem;
+            background: var(--lotry-accent);
+            border-radius: 50%;
+        }
+        .section-card,
+        .simple-result-card {
             margin: var(--gap-md) 0 var(--gap-lg);
+            padding: 1.35rem 1.4rem;
+            background: rgba(255, 255, 255, .92);
+            border: 1px solid var(--lotry-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
         }
-        .section-eyebrow { color: #991b1b; font-weight: 900; font-size: 1rem; margin-bottom: .3rem; letter-spacing: .03em; }
-        .section-title { color: #000000; font-size: 1.5rem; font-weight: 900; margin: 0 0 .5rem; line-height: 1.3; }
-        .section-copy { color: #1a202c; line-height: 1.7; margin: 0; font-size: 1.1rem; font-weight: 500; }
-        div[data-testid="stRadio"] { margin-bottom: .4rem; }
-        div[data-testid="stRadio"] label { font-size: 1.15rem !important; font-weight: 700 !important; }
-        [data-testid="stCaptionContainer"] { margin: .2rem 0 1rem; font-size: 1rem !important; color: #475569 !important; }
-        div[data-testid="stExpander"] { margin: var(--gap-sm) 0; border: 1.5px solid #cbd5e1 !important; border-radius: var(--radius) !important; }
-        div[data-testid="stExpander"] details summary { font-size: 1.1rem; font-weight: 700; padding: .9rem 1rem !important; }
-        div[data-testid="stExpander"] details[open] summary { border-bottom: 1px solid #e2e8f0; }
-        div[data-testid="stRadio"] label,
-        div[data-testid="stRadio"] label *,
-        div[data-testid="stRadio"] [data-testid="stMarkdownContainer"] p,
-        [data-testid="stCaptionContainer"],
-        [data-testid="stCaptionContainer"] *,
-        div[data-testid="stExpander"] details,
-        div[data-testid="stExpander"] details summary,
-        div[data-testid="stExpander"] details summary *,
-        div[data-testid="stExpander"] [data-testid="stMarkdownContainer"] p {
-            color: #172033 !important;
-            opacity: 1 !important;
+        .section-eyebrow {
+            margin-bottom: .4rem;
+            color: var(--lotry-accent);
+            font-size: .78rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: none;
         }
-        div[data-testid="stRadio"] input[type="radio"] { opacity: 1 !important; }
+        .section-title,
+        .simple-result-title {
+            margin: 0 0 .5rem;
+            color: var(--lotry-ink);
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1.35;
+            letter-spacing: -.02em;
+        }
+        .section-copy,
+        .quiet-note {
+            margin: 0;
+            color: var(--lotry-muted);
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.75;
+        }
+        div[data-testid="stRadio"] { margin-bottom: .35rem; }
+        div[data-testid="stRadio"] label { font-size: 1rem !important; font-weight: 600 !important; }
+        [data-testid="stCaptionContainer"] {
+            margin: .25rem 0 1rem;
+            color: var(--lotry-muted) !important;
+            font-size: .9rem !important;
+            line-height: 1.65;
+        }
+        div[data-testid="stExpander"] {
+            margin: var(--gap-sm) 0;
+            overflow: hidden;
+            background: rgba(255, 255, 255, .76);
+            border: 1px solid var(--lotry-border) !important;
+            border-radius: var(--radius-md) !important;
+            box-shadow: 0 3px 14px rgba(47, 39, 31, .035);
+        }
+        div[data-testid="stExpander"] details summary {
+            padding: .95rem 1.05rem !important;
+            color: var(--lotry-ink) !important;
+            font-size: .98rem;
+            font-weight: 700;
+        }
+        div[data-testid="stExpander"] details[open] summary { border-bottom: 1px solid var(--lotry-border); }
         div[data-testid="stMetric"] {
-            background: #ffffff;
-            border: var(--border-strong);
-            border-radius: var(--radius);
-            padding: .9rem .6rem;
+            padding: .95rem .75rem;
+            background: var(--lotry-surface);
+            border: 1px solid var(--lotry-border);
+            border-radius: var(--radius-md);
             text-align: center;
-            overflow: visible !important;
         }
-        div[data-testid="stMetric"] label { font-size: 1rem !important; font-weight: 900 !important; color: #000000 !important; white-space: normal !important; }
-        div[data-testid="stMetricValue"] { font-size: 1.4rem !important; font-weight: 900 !important; color: #b91c1c !important; white-space: normal !important; word-break: break-all !important; line-height: 1.3 !important; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; margin: var(--gap-sm) 0 var(--gap-md); }
-        .stat-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+        div[data-testid="stMetric"] label {
+            color: var(--lotry-muted) !important;
+            font-size: .88rem !important;
+            font-weight: 650 !important;
+        }
+        div[data-testid="stMetricValue"] {
+            color: var(--lotry-ink) !important;
+            font-size: 1.35rem !important;
+            font-weight: 800 !important;
+            line-height: 1.3 !important;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .75rem;
+            margin: var(--gap-sm) 0 var(--gap-md);
+        }
+        .stat-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .stat-card {
-            background: #ffffff;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 12px;
-            padding: .9rem .6rem;
+            padding: 1rem .75rem;
+            background: rgba(255, 255, 255, .9);
+            border: 1px solid var(--lotry-border);
+            border-radius: var(--radius-md);
             text-align: center;
         }
-        .stat-card-label { font-size: .95rem; font-weight: 700; color: #475569; margin-bottom: .25rem; }
-        .stat-card-value { font-size: 1.3rem; font-weight: 900; color: #b91c1c; word-break: break-all; line-height: 1.25; }
-        .stat-card-value.neutral { color: #0f172a; }
+        .stat-card-label {
+            margin-bottom: .3rem;
+            color: var(--lotry-muted);
+            font-size: .84rem;
+            font-weight: 600;
+        }
+        .stat-card-value {
+            color: var(--lotry-accent-dark);
+            font-size: 1.2rem;
+            font-weight: 800;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+        .stat-card-value.neutral { color: var(--lotry-ink); }
         .selected-strip {
             display: flex;
             align-items: center;
-            gap: .7rem;
-            flex-wrap: wrap;
             justify-content: center;
-            min-height: 4.2rem;
-            padding: 1rem .9rem;
-            border-radius: var(--radius);
-            background: #fffcf0;
-            border: 2px dashed #b91c1c;
+            flex-wrap: wrap;
+            gap: .65rem;
+            min-height: 4.5rem;
             margin: 0 0 var(--gap-sm);
+            padding: 1rem;
+            background: rgba(255, 255, 255, .82);
+            border: 1px solid var(--lotry-border);
+            border-radius: var(--radius-md);
         }
-        .selected-label { color: #1a202c; font-weight: 900; margin-right: .3rem; font-size: 1.15rem; }
-        .lottery-ball {
-            width: 3.1rem;
-            height: 3.1rem;
-            border-radius: 50%;
+        .selected-label {
+            margin-right: .25rem;
+            color: var(--lotry-muted);
+            font-size: .9rem;
+            font-weight: 700;
+        }
+        .lottery-ball,
+        .mini-ball {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: #cf2e2e;
-            color: #ffffff;
-            font-weight: 900;
-            font-size: 1.25rem;
-            border: 2.5px solid #1a1a1a;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+            width: 2.85rem;
+            height: 2.85rem;
+            color: #fff;
+            background: linear-gradient(145deg, #bd5146, #8f342d);
+            border: 1px solid rgba(81, 25, 21, .32);
+            border-radius: 50%;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 5px 12px rgba(86, 39, 31, .16);
+            font-size: 1.08rem;
+            font-weight: 800;
         }
         .mini-ball {
-            width: 2.8rem;
-            height: 2.8rem;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #000000;
-            font-weight: 900;
-            font-size: 1.2rem;
-            background: #ffffff;
-            border: 2.5px solid #f8c74a;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+            color: var(--lotry-ink);
+            background: #fff;
+            border-color: #d8b675;
         }
         div.stButton > button,
         div.stDownloadButton > button,
-        div[data-testid="stDownloadButton"] > button {
-            border-radius: 12px;
-            min-height: 3.4rem;
-            padding: 0 1.6rem;
-            font-weight: 900;
-            font-size: 1.15rem;
-            border: 2px solid #1a1a1a;
-            background: #ffffff;
-            color: #1a1a1a;
-            transition: all .12s ease;
+        div[data-testid="stDownloadButton"] > button,
+        a.app-link-btn {
+            min-height: 3.15rem;
+            padding: 0 1.3rem;
+            color: var(--lotry-ink);
+            background: #fff;
+            border: 1px solid #d8d1c7;
+            border-radius: var(--radius-sm);
+            box-shadow: 0 3px 10px rgba(47, 39, 31, .05);
+            font-size: 1rem;
+            font-weight: 700;
+            transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
         }
         div.stButton > button:hover,
         div.stDownloadButton > button:hover,
-        div[data-testid="stDownloadButton"] > button:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12); }
-        div.stButton > button[kind="primary"] {
-            background: #cf2e2e;
-            color: #ffffff;
-            border-color: #1a1a1a;
+        div[data-testid="stDownloadButton"] > button:hover,
+        a.app-link-btn:hover {
+            transform: translateY(-1px);
+            border-color: #bdb3a6;
+            box-shadow: 0 7px 18px rgba(47, 39, 31, .09);
         }
+        div.stButton > button[kind="primary"] {
+            color: #fff;
+            background: var(--lotry-accent);
+            border-color: var(--lotry-accent);
+        }
+        div.stButton > button[kind="primary"] p { color: #fff !important; }
+        div.stButton > button:not([kind="primary"]) p,
         div.stDownloadButton > button p,
-        div[data-testid="stDownloadButton"] > button p { color: #1a1a1a !important; font-size: 1.15rem !important; font-weight: 900 !important; white-space: nowrap !important; }
-        div.stButton > button:not([kind="primary"]) p { color: #1a1a1a !important; }
-        div.stButton > button[kind="primary"] p { color: #ffffff !important; font-size: 1.2rem !important; font-weight: 900 !important; white-space: nowrap !important; }
+        div[data-testid="stDownloadButton"] > button p { color: var(--lotry-ink) !important; }
         a.app-link-btn {
             display: flex !important;
             align-items: center;
             justify-content: center;
-            min-height: 3.4rem;
-            padding: 0 1.2rem;
-            border-radius: 12px;
-            border: 2px solid #1a1a1a;
-            font-weight: 900;
-            font-size: 1.15rem;
-            line-height: 1.1;
-            text-decoration: none !important;
             box-sizing: border-box;
-            transition: all .12s ease;
+            text-decoration: none !important;
         }
-        a.app-link-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12); }
-        a.app-link-btn.line-green { background: #06C755; color: #ffffff !important; }
+        a.app-link-btn.line-green { color: #fff !important; background: #168447; border-color: #168447; }
         .ball-row div.stButton { width: 100%; }
         .ball-row div.stButton > button {
             width: 100% !important;
             min-width: 0 !important;
-            min-height: 2.6rem !important;
-            padding: .25rem .4rem !important;
-            font-size: 1.05rem;
-            background: #ffffff;
-            color: #1a1a1a;
-            border: 1.5px solid #94a3b8;
-            border-radius: 10px !important;
+            min-height: 2.45rem !important;
+            padding: .15rem .25rem !important;
+            background: rgba(255, 255, 255, .82);
+            border: 1px solid #ddd6cc;
+            border-radius: 9px !important;
+            box-shadow: none;
+            font-size: .94rem;
         }
         .ball-row div.stButton > button[kind="primary"] {
-            background: #cf2e2e;
-            color: #ffffff;
-            border: 2px solid #1a1a1a;
+            color: #fff;
+            background: var(--lotry-accent);
+            border-color: var(--lotry-accent-dark);
         }
         .ball-row div.stButton > button div[data-testid="stMarkdownContainer"] {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        .ball-row div.stButton > button p {
-            font-size: 1rem !important;
-            line-height: 1 !important;
             margin: 0 !important;
             padding: 0 !important;
-            white-space: nowrap !important;
-            letter-spacing: 0 !important;
         }
-        .ball-row div.stButton > button[kind="primary"] p { font-weight: 900 !important; color: #ffffff !important; }
-        .loss-box {
-            padding: 1.6rem 1.4rem;
-            border-radius: var(--radius);
-            background: #fffafa;
-            border: 2px solid #b91c1c;
-            text-align: center;
-            margin: 0 0 var(--gap-sm);
-            box-shadow: 0 4px 12px rgba(185, 28, 28, .08);
-        }
-        .loss-number {
-            color: #b91c1c;
-            font-size: clamp(2.6rem, 11vw, 4.4rem);
-            font-weight: 900;
-            line-height: 1.05;
-            margin-top: .8rem;
-            letter-spacing: -.01em;
-        }
+        .ball-row div.stButton > button p { margin: 0 !important; font-size: .92rem !important; line-height: 1 !important; }
+        .loss-box,
         .win-box {
-            padding: 1.6rem 1.4rem;
-            border-radius: var(--radius);
-            background: #f0fdf4;
-            border: 2px solid #15803d;
-            text-align: center;
             margin: 0 0 var(--gap-sm);
-            box-shadow: 0 4px 12px rgba(21, 128, 61, .12);
-        }
-        .win-number {
-            color: #15803d;
-            font-size: clamp(2.6rem, 11vw, 4.4rem);
-            font-weight: 900;
-            line-height: 1.05;
-            margin-top: .8rem;
-            letter-spacing: -.01em;
-        }
-        .quiet-note { color: #1a202c; font-size: 1.1rem; line-height: 1.65; font-weight: 600; }
-        .tangible-loss {
-            margin: 0 0 var(--gap-md);
-            padding: 1.1rem 1rem;
-            border-radius: var(--radius);
-            background: #fff7ed;
-            border: 2px dashed #f59e0b;
-            color: #1a202c;
-            font-size: 1.1rem;
-            font-weight: 700;
-            line-height: 1.85;
+            padding: 1.6rem 1.35rem;
+            background: #fff;
+            border: 1px solid var(--lotry-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
             text-align: center;
         }
-        .tangible-loss .emoji { font-size: 1.5rem; margin-right: .3rem; }
-        .verdict-card {
+        .loss-box { border-top: 4px solid var(--lotry-danger); }
+        .win-box { border-top: 4px solid var(--lotry-success); }
+        .loss-number,
+        .win-number {
+            margin-top: .75rem;
+            font-size: clamp(2.5rem, 10vw, 4.2rem);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -.04em;
+        }
+        .loss-number { color: var(--lotry-danger); }
+        .win-number { color: var(--lotry-success); }
+        .tangible-loss,
+        .verdict-card,
+        .strategy-note {
             margin: 0 0 var(--gap-md);
-            padding: 1.3rem 1.2rem;
-            border-radius: var(--radius);
-            background: #fffcf0;
-            border: 2px solid #b91c1c;
-            color: #1a202c;
-            font-weight: 700;
+            padding: 1.05rem 1.1rem;
+            color: var(--lotry-ink);
+            background: rgba(255, 255, 255, .82);
+            border: 1px solid var(--lotry-border);
+            border-left: 4px solid var(--lotry-gold);
+            border-radius: var(--radius-sm);
+            font-size: .96rem;
+            font-weight: 500;
             line-height: 1.75;
-            font-size: 1.1rem;
         }
-        .verdict-card b { color: #991b1b; }
-        .verdict-card u { text-decoration-color: #cf2e2e; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-        .simple-result-card {
-            margin: 0 0 var(--gap-md);
-            padding: 1.4rem 1.2rem;
-            border-radius: var(--radius);
-            background: #ffffff;
-            border: var(--border-strong);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        .verdict-card b { color: var(--lotry-accent-dark); }
+        .verdict-card u {
+            text-decoration-color: rgba(167, 68, 58, .45);
+            text-decoration-thickness: 2px;
+            text-underline-offset: 3px;
         }
-        .simple-result-title { color: #000000; font-size: 1.25rem; font-weight: 900; margin-bottom: .6rem; line-height: 1.4; }
-        .loss-track { height: .9rem; border-radius: 999px; background: linear-gradient(90deg, #fee2e2, #ef4444); margin: 1rem 0 .7rem; }
-        .loss-track-labels { display: flex; justify-content: space-between; color: #1a202c; font-size: 1rem; font-weight: 900; }
+        .loss-track {
+            height: .55rem;
+            margin: 1rem 0 .75rem;
+            overflow: hidden;
+            background: #eadfd9;
+            border-radius: 999px;
+        }
+        .loss-track::after {
+            content: "";
+            display: block;
+            width: 78%;
+            height: 100%;
+            background: linear-gradient(90deg, #d99a91, var(--lotry-accent));
+            border-radius: inherit;
+        }
+        .loss-track-labels {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            color: var(--lotry-muted);
+            font-size: .86rem;
+            font-weight: 600;
+        }
         .loading-card {
             margin: 1rem 0;
-            padding: 1.4rem 1.2rem;
-            border-radius: var(--radius);
-            background: #fffcf0;
-            border: 2px solid #b91c1c;
+            padding: 1.3rem 1.1rem;
+            background: rgba(255, 255, 255, .88);
+            border: 1px solid var(--lotry-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
             text-align: center;
         }
-        .loading-title { color: #000000; font-weight: 900; font-size: 1.2rem; margin-bottom: .7rem; }
-        .loading-subtitle { color: #1a202c; font-size: 1rem; font-weight: 600; line-height: 1.55; }
-        .loading-balls { display: flex; justify-content: center; gap: .55rem; margin: .8rem 0; }
+        .loading-title { margin-bottom: .55rem; color: var(--lotry-ink); font-size: 1.05rem; font-weight: 700; }
+        .loading-subtitle { color: var(--lotry-muted); font-size: .9rem; line-height: 1.55; }
+        .loading-balls { display: flex; justify-content: center; gap: .45rem; margin: .8rem 0; }
         .loading-ball {
-            width: 2.7rem;
-            height: 2.7rem;
-            border-radius: 50%;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            color: #ffffff;
-            font-weight: 900;
-            font-size: 1.05rem;
-            background: #cf2e2e;
-            border: 2px solid #1a1a1a;
+            width: 2.35rem;
+            height: 2.35rem;
+            color: #fff;
+            background: var(--lotry-accent);
+            border-radius: 50%;
+            font-size: .9rem;
+            font-weight: 700;
             animation: ball-bounce 900ms ease-in-out infinite;
         }
         .loading-ball:nth-child(2) { animation-delay: 90ms; }
@@ -546,104 +618,64 @@ def inject_style() -> None:
         .loading-ball:nth-child(4) { animation-delay: 270ms; }
         .loading-ball:nth-child(5) { animation-delay: 360ms; }
         .loading-ball:nth-child(6) { animation-delay: 450ms; }
-        @keyframes ball-bounce {
-            0%, 100% { transform: translateY(0); }
-            45% { transform: translateY(-.45rem); }
-        }
+        @keyframes ball-bounce { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-.35rem); } }
         .share-cta {
             margin: var(--gap-xl) 0 var(--gap-md);
-            padding: 1.5rem 1.3rem;
-            border-radius: var(--radius);
-            background: linear-gradient(135deg, #1e3a5f 0%, #172033 100%);
-            color: #ffffff;
-            text-align: center;
-            border: 2.5px solid #f8c74a;
-            box-shadow: 0 6px 18px rgba(23, 32, 51, .18);
+            padding: 1.35rem 1.3rem;
+            color: #fff;
+            background: linear-gradient(135deg, #35302d, #242321);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            text-align: left;
         }
-        .share-cta-title { font-size: 1.4rem; font-weight: 900; margin-bottom: .5rem; color: #f8c74a; line-height: 1.4; }
-        .share-cta-body { font-size: 1.05rem; font-weight: 600; line-height: 1.7; color: #ffffff; }
+        .share-cta-title { margin-bottom: .35rem; color: #ecd5a8; font-size: 1.12rem; font-weight: 700; }
+        .share-cta-body { color: rgba(255, 255, 255, .76); font-size: .94rem; font-weight: 400; line-height: 1.7; }
         .warning-line {
             margin: var(--gap-xl) 0 .5rem;
-            padding: 1.4rem 1.2rem;
-            border-radius: var(--radius);
-            color: #ffffff;
-            background: #b91c1c;
-            border: 2px solid #1a1a1a;
-            font-size: 1.2rem;
-            font-weight: 800;
+            padding: 1.2rem 1.25rem;
+            color: var(--lotry-muted);
+            background: transparent;
+            border-top: 1px solid var(--lotry-border);
+            border-bottom: 1px solid var(--lotry-border);
+            font-size: .93rem;
+            font-weight: 500;
+            line-height: 1.75;
             text-align: center;
-            line-height: 1.7;
-        }
-        .strategy-note {
-            margin: var(--gap-md) 0;
-            padding: 1.1rem 1rem;
-            border-radius: var(--radius);
-            background: #e0f2fe;
-            border: 1.5px solid #0369a1;
-            color: #0c4a6e;
-            font-weight: 700;
-            font-size: 1.05rem;
-            line-height: 1.65;
         }
         .strategy-list { display: grid; gap: .7rem; margin: var(--gap-md) 0; }
         .strategy-row {
-            padding: 1rem 1rem;
-            background: #ffffff;
-            border: 1.5px solid #cbd5e1;
-            border-radius: var(--radius);
-            margin-bottom: 0;
+            padding: 1rem 1.05rem;
+            background: rgba(255, 255, 255, .86);
+            border: 1px solid var(--lotry-border);
+            border-radius: var(--radius-md);
         }
-        .strategy-row-top {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: .8rem;
-            margin-bottom: .45rem;
-        }
-        .strategy-name { font-size: 1.15rem; color: #000000; font-weight: 900; }
-        .strategy-loss { font-size: 1.1rem; color: #b91c1c; font-weight: 900; white-space: nowrap; }
-        .strategy-desc { font-size: 1rem; color: #475569; font-weight: 600; line-height: 1.55; margin: 0 0 .55rem; }
-        .strategy-bar-bg { height: .8rem; border-radius: 999px; background: #fee2e2; overflow: hidden; }
-        .strategy-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f87171, #b91c1c); }
+        .strategy-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; margin-bottom: .45rem; }
+        .strategy-name { color: var(--lotry-ink); font-size: 1rem; font-weight: 700; }
+        .strategy-loss { color: var(--lotry-accent-dark); font-size: .94rem; font-weight: 700; white-space: nowrap; }
+        .strategy-desc { margin: 0 0 .6rem; color: var(--lotry-muted); font-size: .88rem; font-weight: 400; line-height: 1.55; }
+        .strategy-bar-bg { height: .45rem; overflow: hidden; background: #eadfd9; border-radius: 999px; }
+        .strategy-bar-fill { height: 100%; background: linear-gradient(90deg, #d99a91, var(--lotry-accent)); border-radius: inherit; }
         @media (max-width: 640px) {
-            html, body, [class*="css"], .stApp, button, input, textarea, select { font-size: 17px !important; }
-            .block-container { padding-left: .75rem; padding-right: .75rem; padding-top: .6rem; }
-            .hero { padding: 1.4rem 1.1rem 1.6rem; margin-bottom: var(--gap-lg); }
-            .hero h1 { font-size: 2.1rem; }
-            .hero p { font-size: 1.05rem; line-height: 1.7; }
-            .hero strong { font-size: 1rem; margin-top: .8rem; padding-top: .8rem; }
-            .step-label { font-size: 1.2rem; margin-top: var(--gap-lg); }
-            .section-card { padding: 1.1rem 1rem; }
-            .section-title { font-size: 1.3rem; }
-            .section-copy { font-size: 1rem; }
-            .loss-box { padding: 1.3rem 1rem; }
-            .verdict-card, .simple-result-card { padding: 1.1rem .95rem; font-size: 1rem; }
-            .tangible-loss { font-size: 1rem; padding: 1rem .9rem; }
-            .stat-grid.three { grid-template-columns: 1fr 1fr; }
-            .stat-card-value { font-size: 1.15rem; }
-            .stat-card-label { font-size: .9rem; }
-            .lottery-ball { width: 2.7rem; height: 2.7rem; font-size: 1.1rem; border-width: 2px; }
-            .selected-strip { padding: .85rem .7rem; gap: .5rem; }
-            .selected-label { font-size: 1.05rem; }
-            div.stButton > button { font-size: 1.1rem; min-height: 3.2rem; padding: 0 1.2rem; }
-            div.stButton > button[kind="primary"] p { font-size: 1.1rem !important; }
-            .ball-row div.stButton > button { min-height: 2.4rem !important; padding: .2rem .3rem !important; font-size: 1rem; }
-            .ball-row div.stButton > button p { font-size: .95rem !important; }
-            .share-cta { padding: 1.3rem 1.1rem; }
-            .share-cta-title { font-size: 1.2rem; }
-            .share-cta-body { font-size: 1rem; }
-            .warning-line { padding: 1.2rem 1rem; font-size: 1.1rem; }
-            .strategy-row { padding: .9rem .85rem; }
-            .strategy-name { font-size: 1.05rem; }
-            .strategy-loss { font-size: 1rem; }
+            .block-container { padding: .85rem .75rem 3rem; }
+            .hero { padding: 1.5rem 1.2rem 1.65rem; margin-bottom: var(--gap-lg); border-radius: 20px; }
+            .hero h1 { font-size: 2.15rem; }
+            .hero p { font-size: .98rem; }
+            .hero-meta { gap: .4rem; }
+            .step-label { margin-top: var(--gap-lg); font-size: 1.18rem; }
+            .section-card, .simple-result-card { padding: 1.15rem 1rem; }
+            .stat-grid.three { grid-template-columns: 1fr; }
+            .stat-card { display: flex; align-items: center; justify-content: space-between; gap: .75rem; text-align: left; }
+            .stat-card-label { margin: 0; }
+            .lottery-ball, .mini-ball { width: 2.55rem; height: 2.55rem; font-size: 1rem; }
+            .selected-strip { gap: .45rem; padding: .85rem .7rem; }
+            .ball-row div.stButton > button { min-height: 2.3rem !important; }
+            .share-cta { padding: 1.2rem 1.05rem; }
         }
         @media (max-width: 380px) {
-            .hero h1 { font-size: 1.85rem; }
-            .lottery-ball { width: 2.4rem; height: 2.4rem; font-size: 1rem; }
-            .ball-row div.stButton > button { min-height: 2.2rem !important; font-size: .9rem; }
+            .hero h1 { font-size: 1.9rem; }
+            .lottery-ball, .mini-ball { width: 2.3rem; height: 2.3rem; font-size: .9rem; }
         }
-        [data-testid="stExpanderToggleIcon"] { display: none !important; }
-        [data-testid="stIconMaterial"] { display: none !important; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -654,9 +686,10 @@ def render_opening() -> None:
     st.markdown(
         """
         <div class="hero">
-          <div class="hero-kicker">給長輩的真心話</div>
+          <div class="hero-kicker">一個寫給爸爸的資料實驗</div>
           <h1>爸爸的樂透實驗</h1>
-          <p>我們把台灣人常用的那些算牌法，全部拿去對過十幾年來的開獎紀錄。<br/><strong>說句老實話：交給電腦選號就好，省下算牌的時間，多陪陪家人吧！</strong></p>
+          <p>我爸算了一輩子的樂透。後來我把他相信的冷熱號、農民曆和新聞明牌寫成程式，一期一期對過十多年的開獎紀錄。<br/><strong>最後沒有找到更準的選法，只看到所有方法長期都差不多。</strong></p>
+          <div class="hero-meta"><span>27 種選號方法</span><span>大樂透、威力彩</span><span>逐期回測</span></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -672,20 +705,20 @@ def load_draws_cached(game_code: str, data_path: str, data_mtime: float) -> list
 
 def render_custom_challenge(game: GameDef, draws: list[dict]) -> None:
     quick_loading_slot = st.empty()
-    if st.button("電腦幫我選，馬上看結果", type="primary", width="stretch"):
+    if st.button("讓電腦隨機選一組", type="primary", width="stretch"):
         numbers = sorted(random_sample(game))
         set_selected_numbers(game, numbers)
         st.session_state[result_key(game)] = (numbers, run_custom_backtest_with_loading(numbers, draws, game, quick_loading_slot))
         request_scroll("lotry-result-anchor")
 
-    with st.expander("我要自己挑號碼（可跳過）"):
-        st.caption(f"從 1 到 {game.main_pool} 任選 {game.main_pick} 顆球，選滿後按「看我的結果」。")
+    with st.expander("我想自己選號"):
+        st.caption(f"從 1 到 {game.main_pool} 選 {game.main_pick} 個號碼，看看如果每期都買，過去會是什麼結果。")
         selected = render_ball_picker(game)
         is_complete = len(selected) == game.main_pick
         action_cols = st.columns(2)
         with action_cols[0]:
             challenge = st.button(
-                "看我的結果",
+                "看看過去的結果",
                 type="primary" if is_complete else "secondary",
                 disabled=not is_complete,
                 width="stretch",
@@ -697,7 +730,7 @@ def render_custom_challenge(game: GameDef, draws: list[dict]) -> None:
                 st.rerun()
         result_loading_slot = st.empty()
         if not is_complete:
-            st.info(f"還差 {game.main_pick - len(selected)} 顆球。")
+            st.info(f"還差 {game.main_pick - len(selected)} 個號碼。")
         elif challenge:
             numbers = sorted(selected)
             st.session_state[result_key(game)] = (numbers, run_custom_backtest_with_loading(numbers, draws, game, result_loading_slot))
@@ -806,9 +839,9 @@ def render_loading_animation(numbers: list[int]) -> None:
     st.markdown(
         f"""
         <div class="loading-card">
-          <div class="loading-title">正在對這十幾年來的答案…</div>
+          <div class="loading-title">正在對照過去的開獎紀錄</div>
           <div class="loading-balls">{balls}</div>
-          <div class="loading-subtitle">電腦正在把這組號碼每一期都對過一遍，馬上就好。</div>
+          <div class="loading-subtitle">把這組號碼放進每一期，算出中獎金額和總花費。</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -862,12 +895,12 @@ def run_custom_backtest(numbers: list[int], draws: list[dict], game: GameDef) ->
 
 
 def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameDef) -> None:
-    st.markdown('<div class="step-label">3. 看結果</div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-label">這組號碼，過去表現如何？</div>', unsafe_allow_html=True)
     result_balls = "".join(f'<span class="lottery-ball">{number:02d}</span>' for number in numbers)
     st.markdown(
         f"""
         <div class="selected-strip">
-          <span class="selected-label">你的明牌</span>
+          <span class="selected-label">你選的號碼</span>
           {result_balls}
         </div>
         """,
@@ -881,7 +914,7 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         st.markdown(
             f"""
             <div class="win-box">
-              <div class="quiet-note">要是這 {result.periods:,} 期你每一期都照著買，<br/>算到今天，你的錢會變成…</div>
+              <div class="quiet-note">假設過去 {result.periods:,} 期每期都買一注，最後會是：</div>
               <div class="win-number">+{format_money(result.net)}</div>
             </div>
             """,
@@ -891,7 +924,7 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         st.markdown(
             f"""
             <div class="loss-box">
-              <div class="quiet-note">要是這 {result.periods:,} 期你每一期都照著買，<br/>算到今天，你的錢會變成…</div>
+              <div class="quiet-note">假設過去 {result.periods:,} 期每期都買一注，最後會是：</div>
               <div class="loss-number">{format_money(result.net)}</div>
             </div>
             """,
@@ -899,29 +932,22 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         )
 
     if abs_amount > 0:
-        dinners = abs_amount // 300
-        trips = abs_amount // 15000
-        tangible_parts = []
-        if dinners >= 1:
-            tangible_parts.append(f'<span class="emoji">🍲</span> 全家吃 <b>{dinners:,}</b> 頓好料')
-        if trips >= 1:
-            tangible_parts.append(f'<span class="emoji">✈️</span> 帶爸媽去 <b>{trips:,}</b> 趟國內旅行')
-        if tangible_parts:
-            lead = "這筆錢相當於⋯" if is_profit else "這些錢本來可以⋯"
-            st.markdown(
-                '<div class="tangible-loss">'
-                + lead + '<br/>'
-                + '<br/>'.join(tangible_parts)
-                + '</div>',
-                unsafe_allow_html=True,
-            )
+        balance_note = (
+            f"獎金比總成本多 <b>{format_money(abs_amount)}</b>。"
+            if is_profit
+            else f"總成本扣掉估算獎金後，差了 <b>{format_money(abs_amount)}</b>。"
+        )
+        st.markdown(
+            f'<div class="tangible-loss">{balance_note}這只是這段歷史紀錄裡的結果，不代表下一期。</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown(
         f"""
         <div class="stat-grid three">
-          <div class="stat-card"><div class="stat-card-label">總共花了</div><div class="stat-card-value">{format_money(result.total_cost)}</div></div>
-          <div class="stat-card"><div class="stat-card-label">總共領回</div><div class="stat-card-value">{format_money(result.total_prize)}</div></div>
-          <div class="stat-card"><div class="stat-card-label">頭獎中過</div><div class="stat-card-value neutral">{result.exact_hits} 次</div></div>
+          <div class="stat-card"><div class="stat-card-label">買彩券共花</div><div class="stat-card-value">{format_money(result.total_cost)}</div></div>
+          <div class="stat-card"><div class="stat-card-label">估算獎金</div><div class="stat-card-value">{format_money(result.total_prize)}</div></div>
+          <div class="stat-card"><div class="stat-card-label">頭獎次數</div><div class="stat-card-value neutral">{result.exact_hits} 次</div></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -930,26 +956,25 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
     odds = jackpot_odds(game)
     odds_text = f"中頭獎機率約 {jackpot_pct(odds)}" if odds else ""
     jackpot_note = jackpot_assumption_text(game)
-    st.caption(f"📒 算法說明：{jackpot_note} 春節加碼、大紅包不納入計算。{odds_text}")
+    st.caption(f"獎金以近年平均與固定獎金估算。{jackpot_note} 春節加碼與大紅包沒有算進去。{odds_text}")
 
     expected_avg = game.main_pick * game.main_pick / game.main_pool
     diff = result.avg_hits - expected_avg
-    direction = "幾乎一樣" if abs(diff) < 0.05 else ("好一點點而已" if diff > 0 else "還比較差一點")
+    comparison = "兩個數字很接近" if abs(diff) < 0.05 else ("這組號碼高一點" if diff > 0 else "這組號碼低一點")
 
     if is_profit:
         if result.exact_hits >= 1:
-            luck_line = f"這 {result.periods:,} 期裡剛好抽到 {result.exact_hits} 次頭獎，才讓帳面看起來是正的。"
+            luck_line = f"這段期間剛好碰到 {result.exact_hits} 次頭獎，結果才會轉正。"
         elif result.near_hits >= 1:
-            luck_line = f"這 {result.periods:,} 期裡剛好中了 {result.near_hits} 次大獎，才湊到正數的。"
+            luck_line = f"這段期間剛好碰到 {result.near_hits} 次較高獎項，結果才會轉正。"
         else:
-            luck_line = f"這 {result.periods:,} 期下來小獎剛好累積到跨過本金。"
+            luck_line = "這段期間的小獎剛好累積超過總成本。"
         st.markdown(
             f"""
             <div class="verdict-card">
-              ⚠️ <b>先別太高興。</b><br/>
+              <b>這次算出賺錢，不代表這組號碼比較會中。</b><br/>
               {luck_line}<br/>
-              中頭獎的機率是 {jackpot_pct(odds)}，下一期一樣從零開始。<br/>
-              你換組號碼或換個年份試試看就知道，大部分的結果都是賠錢收場。
+              頭獎機率約為 {jackpot_pct(odds)}，而且每一期都會重新開始。換一組號碼或換一段年份，結果很可能完全不同。
             </div>
             """,
             unsafe_allow_html=True,
@@ -958,9 +983,8 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         st.markdown(
             f"""
             <div class="verdict-card">
-              算下來，這組號碼平均每一期才中 <b>{result.avg_hits:.3f}</b> 顆球，<br/>
-              跟閉著眼睛讓電腦選（<b>{expected_avg:.3f}</b> 顆）其實差不多啦！<br/>
-              兩邊比起來{direction}。<br/><u>但最現實的是：管你用哪種方法，買到最後都是賠錢。</u>
+              這組號碼平均每期對中 <b>{result.avg_hits:.3f}</b> 個主區號碼，隨機選號理論上約為 <b>{expected_avg:.3f}</b>。<br/>
+              {comparison}。<br/><u>從這段歷史紀錄，看不出它有能重複出現的優勢。</u>
             </div>
             """,
             unsafe_allow_html=True,
@@ -978,7 +1002,7 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
             customdata=list(zip(chart_date_labels, chart_money_labels, strict=True)),
             mode="lines",
             line=dict(color=line_color, width=3),
-            name="你的明牌累計損益",
+            name="所選號碼累計損益",
             hovertemplate="日期：%{customdata[0]}<br>累計損益：%{customdata[1]}<extra></extra>",
         )
     )
@@ -999,9 +1023,8 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         st.markdown(
             f"""
             <div class="simple-result-card">
-              <div class="simple-result-title">帳面好看，是因為那幾次大獎撐起來的</div>
-              <div class="quiet-note">拿掉那幾次中獎，其他期加起來一樣是越買越少。<br/>
-                平均每期只中 <b>{result.avg_hits:.3f}</b> 顆球，跟電腦亂選的 <b>{expected_avg:.3f}</b> 顆差不多啦！</div>
+              <div class="simple-result-title">為什麼這次會賺？</div>
+              <div class="quiet-note">主要是少數幾次較高獎項把結果拉了上來。平均每期對中 <b>{result.avg_hits:.3f}</b> 個主區號碼，仍接近隨機選號的 <b>{expected_avg:.3f}</b>。</div>
               <div class="loss-track-labels" style="margin-top: 1rem;">
                 <span>開始：NT$ 0</span><span>現在：+{format_money(result.net)}</span>
               </div>
@@ -1013,8 +1036,8 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         st.markdown(
             f"""
             <div class="simple-result-card">
-              <div class="simple-result-title">說句真心話：這組號碼沒有比較容易中</div>
-              <div class="quiet-note">要是每一期都傻傻跟著買，<br/>辛苦錢只會一點一滴變少而已。</div>
+              <div class="simple-result-title">這組號碼沒有特別準</div>
+              <div class="quiet-note">固定買同一組號碼，過去這段期間的獎金沒有補回總成本。</div>
               <div class="loss-track"></div>
               <div class="loss-track-labels"><span>開始：NT$ 0</span><span>現在：{format_money(result.net)}</span></div>
             </div>
@@ -1025,10 +1048,9 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
     st.markdown(
         """
         <div class="share-cta">
-          <div class="share-cta-title">把結果傳給親朋好友</div>
+          <div class="share-cta-title">把結果存成圖片</div>
           <div class="share-cta-body">
-            存成一張圖片，傳到賴（LINE）的家庭群組或是臉書。<br/>
-            提醒身邊的人，世界上真的沒有穩中的明牌。
+            想留著或傳給家人，可以產生一張簡單的小卡。上面會清楚標示這是過去的結果，不是在預測下一期。
           </div>
         </div>
         """,
@@ -1044,7 +1066,7 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         result.total_prize,
         result.exact_hits,
     )
-    if st.button("📸 生成分享小卡", type="primary", width="stretch", key=f"gen_card_{game.code}"):
+    if st.button("產生結果小卡", type="primary", width="stretch", key=f"gen_card_{game.code}"):
         try:
             card_png = build_share_card(numbers, result, game)
         except RuntimeError as exc:
@@ -1060,7 +1082,7 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
         dl_cols = st.columns(2)
         with dl_cols[0]:
             st.download_button(
-                label="💾 下載圖片",
+                label="下載圖片",
                 data=card_png,
                 file_name=f"lotry_{game.code}_{'-'.join(f'{n:02d}' for n in numbers)}.png",
                 mime="image/png",
@@ -1071,14 +1093,14 @@ def render_custom_result(result: CustomBacktest, numbers: list[int], game: GameD
             st.markdown(
                 '<a class="app-link-btn line-green" '
                 'href="https://social-plugins.line.me/lineit/share?url=https%3A%2F%2Flotry.tw" '
-                'target="_blank" rel="noopener noreferrer">💬 分享到 LINE</a>',
+                'target="_blank" rel="noopener noreferrer">分享到 LINE</a>',
                 unsafe_allow_html=True,
             )
-        st.caption("💡 長按圖片也可以直接分享給其他 App")
+        st.caption("手機可長按圖片儲存或分享。")
 
-    with st.expander("想看累計走勢圖（可跳過）"):
+    with st.expander("看看錢怎麼一路變化"):
         st.plotly_chart(curve, width="stretch", config={"displayModeBar": False})
-        st.caption("獎金包含特別號／第二區；頭獎採近年平均單人實領估算（已假設多人均分）。春節加碼、大紅包不納入。用途是看長期趨勢，不是精算實際金額。")
+        st.caption("獎金包含特別號／第二區；浮動獎項用近年平均單人實領估算。春節加碼與大紅包沒有算進去，因此這張圖適合看趨勢，不適合拿來核對每一期派彩。")
 
 
 def render_bonus_wheel_section(game: GameDef, draws: list[dict]) -> None:
@@ -1088,11 +1110,10 @@ def render_bonus_wheel_section(game: GameDef, draws: list[dict]) -> None:
     st.markdown(
         """
         <div class="section-card">
-          <div class="section-eyebrow">加碼試算</div>
-          <div class="section-title">如果「包牌」只包特別號呢？</div>
+          <div class="section-eyebrow">威力彩多算一種買法</div>
+          <div class="section-title">第二區 1 到 8 全包，真的比較划算嗎？</div>
           <p class="section-copy">
-            常聽人說：「第二區全包就穩中啦！」<br/>
-            真的嗎？點下去看看實際上會賠多少。
+            第二區全包的確比較常中小獎，但每期也要一次買八注。這裡沿用同一組主區號碼，看看過去的獎金能不能補回多出的成本。
           </p>
         </div>
         """,
@@ -1101,10 +1122,10 @@ def render_bonus_wheel_section(game: GameDef, draws: list[dict]) -> None:
 
     selected = st.session_state.get(selected_key(game)) or []
     if len(selected) != game.main_pick:
-        st.caption("先在上面選滿 6 顆主區號碼，這個試算才知道你的明牌是哪組。")
+        st.caption("請先在上方選滿 6 個主區號碼。")
         return
 
-    if st.button("包第二區（1–8 全買）試算", width="stretch"):
+    if st.button("算算看第二區全包", width="stretch"):
         st.session_state[bonus_wheel_key(game)] = (
             sorted(selected),
             run_bonus_wheel_backtest(sorted(selected), draws, game),
@@ -1170,9 +1191,9 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
     st.markdown(
         f"""
         <div class="selected-strip">
-          <span class="selected-label">主區明牌</span>
+          <span class="selected-label">主區號碼</span>
           {result_balls}
-          <span class="selected-label" style="margin-left:12px;">＋第二區 1–8 全包</span>
+          <span class="selected-label" style="margin-left:12px;">第二區 1–8 全包</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1185,8 +1206,8 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
             <div class="win-box">
               <div class="quiet-note">
                 這 {result.periods:,} 期下來，<br/>
-                每期花 {format_money(cost_per_period)} 全包第二區，<br/>
-                帳面上竟然是正的…
+                每期投入 {format_money(cost_per_period)} 購買八注，<br/>
+                歷史回測的累計損益為
               </div>
               <div class="win-number">+{format_money(result.net)}</div>
             </div>
@@ -1199,8 +1220,8 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
             <div class="loss-box">
               <div class="quiet-note">
                 這 {result.periods:,} 期下來，<br/>
-                每期都花 {format_money(cost_per_period)} 霸氣全包第二區，<br/>
-                雖然號稱「每期保證中普獎 100 元」，<br/>但其實…
+                每期投入 {format_money(cost_per_period)} 購買八注，<br/>
+                歷史回測的累計損益為
               </div>
               <div class="loss-number">{format_money(result.net)}</div>
             </div>
@@ -1210,21 +1231,20 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
     st.markdown(
         f"""
         <div class="stat-grid three">
-          <div class="stat-card"><div class="stat-card-label">總共花了</div><div class="stat-card-value">{format_money(result.total_cost)}</div></div>
-          <div class="stat-card"><div class="stat-card-label">總共領回</div><div class="stat-card-value">{format_money(result.total_prize)}</div></div>
-          <div class="stat-card"><div class="stat-card-label">頭獎中過</div><div class="stat-card-value neutral">{result.exact_hits} 次</div></div>
+          <div class="stat-card"><div class="stat-card-label">買彩券共花</div><div class="stat-card-value">{format_money(result.total_cost)}</div></div>
+          <div class="stat-card"><div class="stat-card-label">估算獎金</div><div class="stat-card-value">{format_money(result.total_prize)}</div></div>
+          <div class="stat-card"><div class="stat-card-label">頭獎次數</div><div class="stat-card-value neutral">{result.exact_hits} 次</div></div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    st.caption(f"📒 算法說明：{jackpot_assumption_text(game)} 春節加碼、大紅包不納入計算。")
+    st.caption(f"獎金估算：{jackpot_assumption_text(game)} 春節加碼與大紅包未納入。")
     if is_profit:
         st.markdown(
             f"""
             <div class="verdict-card">
-              ⚠️ <b>全包能賺，是因為這 {result.periods:,} 期裡剛好有抽到大獎。</b><br/>
-              其他 7 張都是陪跑的，沒中大獎的時候只能拿 100 元普獎。<br/>
-              拉長 12 年來看，絕大多數情況是賠的。
+              <b>這次會賺，主要是剛好碰到少數高額獎項。</b><br/>
+              第二區全包每期都多買七注；沒有較高獎項時，多出的成本通常會比小獎還多。
             </div>
             """,
             unsafe_allow_html=True,
@@ -1233,8 +1253,8 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
         st.markdown(
             """
             <div class="verdict-card">
-              <b>全包確實保證中獎，<br/>但中一張 100 元，代表其他 7 張都是做白工，<br/>扣掉本金照樣賠。</b><br/>
-              以為靠「穩中」就能賺錢？這算盤恐怕打錯囉。
+              <b>比較常中，不代表最後比較划算。</b><br/>
+              全包能保證其中一注對中第二區，但另外七注也都要付錢；在這段歷史紀錄裡，獎金仍沒有補回成本。
             </div>
             """,
             unsafe_allow_html=True,
@@ -1243,10 +1263,9 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
     st.markdown(
         """
         <div class="share-cta">
-          <div class="share-cta-title">把結果傳給親朋好友</div>
+          <div class="share-cta-title">把全包結果存成圖片</div>
           <div class="share-cta-body">
-            把「全包也在賠」的真相存成一張圖，<br/>
-            傳給那些說「包牌穩中」的長輩或朋友看看！
+            小卡會列出主區號碼、八倍成本和最後損益，方便看清楚「比較常中」和「有沒有賺」是兩件事。
           </div>
         </div>
         """,
@@ -1262,7 +1281,7 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
         result.total_prize,
         result.exact_hits,
     )
-    if st.button("📸 生成包牌分享小卡", type="primary", width="stretch", key=f"gen_bonus_card_{game.code}"):
+    if st.button("產生全包結果小卡", type="primary", width="stretch", key=f"gen_bonus_card_{game.code}"):
         try:
             bonus_png = build_bonus_card(numbers, result, game)
         except RuntimeError as exc:
@@ -1281,7 +1300,7 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
         dl_cols = st.columns(2)
         with dl_cols[0]:
             st.download_button(
-                label="💾 下載圖片",
+                label="下載圖片",
                 data=bonus_png,
                 file_name=f"lotry_bonus_{game.code}_{'-'.join(f'{n:02d}' for n in numbers)}.png",
                 mime="image/png",
@@ -1292,10 +1311,10 @@ def render_bonus_wheel_result(result: CustomBacktest, numbers: list[int], game: 
             st.markdown(
                 '<a class="app-link-btn line-green" '
                 'href="https://social-plugins.line.me/lineit/share?url=https%3A%2F%2Flotry.tw" '
-                'target="_blank" rel="noopener noreferrer">💬 分享到 LINE</a>',
+                'target="_blank" rel="noopener noreferrer">分享到 LINE</a>',
                 unsafe_allow_html=True,
             )
-        st.caption("💡 長按圖片也可以直接儲存，或分享給其他 App")
+        st.caption("手機可長按圖片儲存或分享。")
 
 
 def prize_for_hits(game: GameDef, main_hits: int, bonus_hits: int = 0) -> int:
@@ -1336,7 +1355,7 @@ def jackpot_assumption_text(game: GameDef) -> str:
 def _md_money(value: int) -> str:
     return format_money(value).replace("$", "\\$")
 
-_BUNDLED_FONT_PATH = ROOT / "assets" / "fonts" / "NotoSansTC-VF.ttf"
+_BUNDLED_FONT_PATH = ROOT / "static" / "fonts" / "NotoSansTC-VF.ttf"
 _FONT_CANDIDATES = (
     _BUNDLED_FONT_PATH,
     Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
@@ -1348,7 +1367,7 @@ _FONT_CANDIDATES = (
 )
 _SHARE_CARD_WIDTH = 1080
 _SHARE_CARD_HEIGHT = 1200
-_SHARE_CARD_VERSION = 5
+_SHARE_CARD_VERSION = 6
 
 
 def _load_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -1363,7 +1382,7 @@ def _load_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
             pass
         return font
     raise RuntimeError(
-        "分享小卡需要可縮放的中文字型。請確認 assets/fonts/NotoSansTC-VF.ttf 已經一起提交並部署，"
+        "分享小卡需要可縮放的中文字型。請確認 static/fonts/NotoSansTC-VF.ttf 已經一起提交並部署，"
         "否則雲端會產生無法閱讀的小方塊文字。"
     )
 
@@ -1539,8 +1558,8 @@ def build_share_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         draw, (cx - tw // 2, cm + 30), title_text, title_font,
         (255, 255, 255, 255), shadow_fill=title_shadow, shadow_offset=(4, 4),
     )
-    _dc(cm + 140, f"{game.name} · {result.periods:,} 期歷史回測", sub_font, gold)
-    tagline = "帳面好看，靠的是那幾次大獎撐出來的" if is_profit_card else "每一期都照著買，買到現在的真實結果"
+    _dc(cm + 140, f"{game.name} · 對照過去 {result.periods:,} 期", sub_font, gold)
+    tagline = "這次會賺，主要是少數幾次大獎" if is_profit_card else "這組號碼如果每期都買"
     tagline_color = (220, 255, 230, 255) if is_profit_card else (255, 220, 200, 255)
     _dc(cm + 192, tagline, tag_font, tagline_color)
 
@@ -1556,11 +1575,11 @@ def build_share_card(numbers: list[int], result: "CustomBacktest", game: GameDef
 
     narrative_font = _load_font(36)
     if is_profit_card:
-        _dc(410, f"這 {result.periods:,} 期下來帳面是正的", narrative_font, (80, 75, 70, 255))
-        _dc(454, "但拿掉那幾次大獎，其實一樣在賠", narrative_font, (80, 75, 70, 255))
+        _dc(410, f"拿這組號碼對過去 {result.periods:,} 期", narrative_font, (80, 75, 70, 255))
+        _dc(454, "少數幾次較高獎項把結果拉到正數", narrative_font, (80, 75, 70, 255))
     else:
-        _dc(410, f"要是這 {result.periods:,} 期每一期都照著買", narrative_font, (80, 75, 70, 255))
-        _dc(454, "算到今天你的錢會變成⋯", narrative_font, (80, 75, 70, 255))
+        _dc(410, f"拿這組號碼對過去 {result.periods:,} 期", narrative_font, (80, 75, 70, 255))
+        _dc(454, "假設每一期都固定買一注", narrative_font, (80, 75, 70, 255))
 
     money_text = ("+" if is_profit_card else "") + format_money(result.net)
     money_font = _fit_font(draw, money_text, width - 240, 120, min_size=72, bold=True)
@@ -1576,19 +1595,9 @@ def build_share_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         text_fill=text_fill,
     )
 
-    abs_amount = abs(result.net)
-    tangible_font = _load_font(34, bold=True)
-    if abs_amount > 0:
-        dinners = abs_amount // 300
-        trips = abs_amount // 15000
-        lines: list[str] = []
-        prefix = "・這筆錢相當於" if is_profit_card else "・這些錢能"
-        if dinners >= 1:
-            lines.append(f"{prefix}替家裡加菜 {dinners:,} 次")
-        if trips >= 1:
-            lines.append(f"{prefix}帶爸媽出去玩 {trips:,} 趟國內旅行")
-        for i, line in enumerate(lines[:2]):
-            _dc(705 + i * 52, line, tangible_font, (180, 100, 20, 255))
+    magnitude_font = _load_font(32, bold=True)
+    _dc(718, f"損益絕對值：{format_money(abs(result.net))}", magnitude_font, (120, 90, 55, 255))
+    _dc(766, "這是過去的結果，不是在預測下一期", _load_font(28), (120, 115, 110, 255))
 
     stat_label_y = 815
     stat_value_y = 863
@@ -1616,17 +1625,17 @@ def build_share_card(numbers: list[int], result: "CustomBacktest", game: GameDef
     draw.line([(80, 940), (width - 80, 940)], fill=(225, 215, 205, 255), width=2)
 
     if is_profit_card:
-        cta_text = f"中頭獎機率 {jackpot_pct(jackpot_odds(game))}，別把好運當實力。"
+        cta_text = f"頭獎機率約 {jackpot_pct(jackpot_odds(game))}；每一期仍是獨立事件。"
     else:
-        cta_text = "交給電腦選就好，省下的時間多陪陪家人吧。"
+        cta_text = "這段歷史裡，看不出它比隨機選號更有優勢。"
     cta_font = _fit_font(draw, cta_text, width - 120, 38, min_size=28, bold=True)
     cta_color = (21, 128, 61, 255) if is_profit_card else (153, 27, 27, 255)
     _dc(964, cta_text, cta_font, cta_color)
 
     brand_font = _load_font(30, bold=True)
     foot_font = _load_font(26)
-    _dc(footer_top + 30, "爸爸的樂透實驗 · 用資料破除明牌迷思", brand_font, gold)
-    _dc(footer_top + 80, "傳給身邊的親朋好友，別再花冤枉錢買明牌了", foot_font, (200, 195, 185, 255))
+    _dc(footer_top + 30, "爸爸的樂透實驗 · 歷史資料回測", brand_font, gold)
+    _dc(footer_top + 80, "這張圖只整理過去資料，不是投注建議", foot_font, (200, 195, 185, 255))
 
     image = image.convert("RGB")
     buffer = io.BytesIO()
@@ -1710,8 +1719,8 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         draw, (cx - tw // 2, cm + 30), "爸爸的樂透實驗", title_font,
         (255, 255, 255, 255), shadow_fill=title_shadow, shadow_offset=(4, 4),
     )
-    _dc(cm + 140, f"{game.name} · 包第二區全包 · {result.periods:,} 期回測", sub_font, gold)
-    tag_text = "帳面能正，全靠那幾次大獎撐起來的" if is_profit_card else "每期花 8 倍本金全包第二區，到底賺還是賠？"
+    _dc(cm + 140, f"{game.name} · 第二區 1–8 全包 · {result.periods:,} 期", sub_font, gold)
+    tag_text = "這次會賺，主要是少數幾次大獎" if is_profit_card else "比較常中，最後有比較划算嗎？"
     tag_color = (220, 255, 230, 255) if is_profit_card else (200, 220, 255, 255)
     _dc(cm + 192, tag_text, tag_font, tag_color)
 
@@ -1732,9 +1741,9 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
     narrative_font = _load_font(36)
     cost_per = TICKET_COST[game.code] * game.bonus_pool
     if is_profit_card:
-        _dc(438, f"每期花 {format_money(cost_per)} 全包，帳面上竟然是正的⋯", narrative_font, (80, 75, 70, 255))
+        _dc(438, f"每期投入 {format_money(cost_per)} 購買八注，歷史結果為", narrative_font, (80, 75, 70, 255))
     else:
-        _dc(438, f"每期花 {format_money(cost_per)} 全包，{result.periods:,} 期下來⋯", narrative_font, (80, 75, 70, 255))
+        _dc(438, f"每期投入 {format_money(cost_per)} 購買八注，{result.periods:,} 期結果為", narrative_font, (80, 75, 70, 255))
 
     money_text = ("+" if is_profit_card else "") + format_money(result.net)
     money_font = _fit_font(draw, money_text, width - 240, 120, min_size=72, bold=True)
@@ -1750,19 +1759,9 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
         text_fill=text_fill,
     )
 
-    abs_amount = abs(result.net)
-    tangible_font = _load_font(34, bold=True)
-    if abs_amount > 0:
-        dinners = abs_amount // 300
-        trips = abs_amount // 15000
-        lines: list[str] = []
-        prefix = "・這筆錢相當於" if is_profit_card else "・這些錢能"
-        if dinners >= 1:
-            lines.append(f"{prefix}替家裡加菜 {dinners:,} 次")
-        if trips >= 1:
-            lines.append(f"{prefix}帶爸媽出去玩 {trips:,} 趟國內旅行")
-        for i, line in enumerate(lines[:2]):
-            _dc(705 + i * 52, line, tangible_font, (180, 100, 20, 255))
+    magnitude_font = _load_font(32, bold=True)
+    _dc(718, f"損益絕對值：{format_money(abs(result.net))}", magnitude_font, (120, 90, 55, 255))
+    _dc(766, "這是過去的結果，不是在預測下一期", _load_font(28), (120, 115, 110, 255))
 
     stat_label_y = 815
     stat_value_y = 863
@@ -1790,17 +1789,17 @@ def build_bonus_card(numbers: list[int], result: "CustomBacktest", game: GameDef
     draw.line([(80, 940), (width - 80, 940)], fill=(225, 215, 205, 255), width=2)
 
     if is_profit_card:
-        cta_text = "全包能賺，全靠運氣抽中大獎而已。"
+        cta_text = "本次正報酬主要由少數高額獎項造成。"
     else:
-        cta_text = "包牌不是秘訣，只是賠更多的方法。"
+        cta_text = "提高中獎頻率，不等於提高長期報酬率。"
     cta_font = _fit_font(draw, cta_text, width - 120, 38, min_size=28, bold=True)
     cta_color = (21, 128, 61, 255) if is_profit_card else (30, 58, 138, 255)
     _dc(964, cta_text, cta_font, cta_color)
 
     brand_font = _load_font(30, bold=True)
     foot_font = _load_font(26)
-    _dc(footer_top + 30, "爸爸的樂透實驗 · 用資料破除明牌迷思", brand_font, gold)
-    _dc(footer_top + 80, "傳給身邊的親朋好友，別再花冤枉錢買明牌了", foot_font, (200, 195, 185, 255))
+    _dc(footer_top + 30, "爸爸的樂透實驗 · 歷史資料回測", brand_font, gold)
+    _dc(footer_top + 80, "這張圖只整理過去資料，不是投注建議", foot_font, (200, 195, 185, 255))
 
     image = image.convert("RGB")
     buffer = io.BytesIO()
@@ -1879,18 +1878,17 @@ def render_strategy_battle(
     total_periods: int,
     toggle_key: str,
 ) -> None:
-    show_strategy = st.toggle("看各種選法最後賺賠", value=False, key=toggle_key)
+    show_strategy = st.toggle("比較幾種常見選法", value=False, key=toggle_key)
     if not show_strategy:
         return
 
     st.markdown(
         """
         <div class="section-card">
-          <div class="section-eyebrow">進階</div>
-          <div class="section-title">各種選法最後賺賠</div>
+          <div class="section-eyebrow">選號方法比較</div>
+          <div class="section-title">熱號、農民曆、新聞明牌，哪個比較有用？</div>
           <p class="section-copy">
-            四種代表方法 + 電腦選號各跑一次，看最後賠多少。<br/>
-            紅條越長代表賠越多，沒有紅條才是真的贏。
+            每種方法都用同一段開獎紀錄、同樣的買法和成本，再和隨機選號放在一起比較。長條只是呈現最後差了多少錢，不是明牌排行榜。
           </p>
         </div>
         """,
@@ -1901,13 +1899,13 @@ def render_strategy_battle(
     loading_slot = st.empty()
     loading_slot.markdown(
         '<div class="loading-card">'
-        '<div class="loading-title">正在整理各派最後結果⋯</div>'
+        '<div class="loading-title">正在重跑幾種選號方法</div>'
         '<div class="loading-balls">'
         '<span class="loading-ball">比</span>'
         '<span class="loading-ball">對</span>'
         '<span class="loading-ball">中</span>'
         '</div>'
-        '<div class="loading-subtitle">每一派各跑一千多期，稍等幾秒</div>'
+        '<div class="loading-subtitle">每種方法都用同一段資料和相同成本。</div>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -1928,8 +1926,8 @@ def render_strategy_battle(
     st.markdown(
         f"""
         <div class="strategy-note">
-          這幾種裡面，最好的是「{best_row['派別']}」：{format_money(int(best_row['總損益']))}。<br/>
-          最差的是「{worst_row['派別']}」：{format_money(int(worst_row['總損益']))}。
+          這次表現最好的是「{best_row['派別']}」：{format_money(int(best_row['總損益']))}。<br/>
+          最差的是「{worst_row['派別']}」：{format_money(int(worst_row['總損益']))}。但換一段年份，順序就可能改變。
         </div>
         """,
         unsafe_allow_html=True,
@@ -1938,8 +1936,7 @@ def render_strategy_battle(
     st.markdown(
         """
         <div class="verdict-card">
-          看出來了嗎？<br/>不管用哪一種派別，最後都沒有辦法穩定賺錢。<br/>
-          這就是隨機的現實：<br/>坊間傳說滿天飛，但中獎機率是不聽故事的。
+          不同遊戲、不同年份，排名都會變動。把資料拉長後，沒有任何一種方法能一直贏過隨機選號；那些小差距比較像運氣，不像真的找到規律。
         </div>
         """,
         unsafe_allow_html=True,
@@ -2019,17 +2016,16 @@ def render_backtest_explainer() -> None:
     st.markdown(
         "\n".join(
             [
-                "**電腦是怎麼算的？**",
+                "**怎麼避免偷看答案？**",
                 "",
-                "為了公平起見，每一期開獎前，我們都會先把答案蓋住，",
-                "只用以前開過的號碼來猜，猜完再對答案。這樣一期一期算下來，",
-                "就不會有那種「早知道我就買什麼」的馬後炮。",
+                "每一期都只使用它以前的開獎紀錄產生號碼，選完後才和當期結果比對。",
+                "從第一期一路重複到最後，避免用已知答案倒推一套看起來很準的規則。",
                 "",
-                "**關於獎金估算：**",
+                "**獎金怎麼估？**",
                 "",
-                "- 像頭獎、貳獎這種沒有固定金額的，我們是拿近五年的「平均一個人實領多少」來算（已經把這筆錢會被幾個人平分的情況考慮進去了），其他小獎就照官方的固定金額。",
-                "- 至於過年加碼的大紅包，因為每年規則都在變，有些資料也沒有保留，所以就**沒有算進去**。算下來一注大概差不了幾十塊，根本動搖不了「長期一直在賠錢」的現實。",
-                "- 反正樂透這東西，獎金多寡本來就都會浮動，這算出來的只是一個**長期趨勢**，讓你看看一直買會發生什麼事。",
+                "- 固定獎依官方規則；頭獎、貳獎等浮動獎項，採近五年平均單人實領金額。",
+                "- 春節加碼與大紅包的規則逐年不同，因此沒有納入。",
+                "- 金額用來比較長期成本與獎金，不是精算每一期實際派彩。",
             ]
         )
     )
@@ -2039,9 +2035,8 @@ def render_footer_warning() -> None:
     st.markdown(
         """
         <div class="warning-line">
-          買彩券是一種樂趣，但千萬別迷信明牌，<br/>
-          因為開獎號碼說到底就只是機率而已。<br/>
-          <span style="font-size:.9em; opacity:.85;">把買明牌的錢省下來，帶家人去吃頓好料吧！</span>
+          這個網站不是選號工具，只是把過去資料攤開來看。<br/>
+          彩券可以當娛樂，但別把明牌當成投資方法。
         </div>
         """,
         unsafe_allow_html=True,
