@@ -1,0 +1,196 @@
+name: Finalize UI refinement
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.head_ref == 'polish/readme-web-copy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: polish/readme-web-copy
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply final wording and weight adjustments
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("streamlit_app.py")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  'st.caption(f"目前有 {game.name} 共 {len(draws):,} 期開獎紀錄。")',
+                  'st.caption(f"目前收錄 {game.name} {len(draws):,} 期開獎紀錄。")',
+              ),
+              (
+                  '''        .hero h1 {
+            max-width: 650px;
+            margin: 0 0 .9rem;
+            color: #fff;
+            font-size: clamp(2.15rem, 7vw, 3.5rem);
+            font-weight: 800;''',
+                  '''        .hero h1 {
+            max-width: 650px;
+            margin: 0 0 .9rem;
+            color: #fff;
+            font-size: clamp(2.15rem, 7vw, 3.5rem);
+            font-weight: 700;''',
+              ),
+              (
+                  '''        .step-label {
+            margin: var(--gap-xl) 0 var(--gap-sm);
+            color: var(--lotry-ink);
+            font-size: 1.32rem;
+            font-weight: 800;''',
+                  '''        .step-label {
+            margin: var(--gap-xl) 0 var(--gap-sm);
+            color: var(--lotry-ink);
+            font-size: 1.32rem;
+            font-weight: 700;''',
+              ),
+              (
+                  '''        .section-title,
+        .simple-result-title {
+            margin: 0 0 .5rem;
+            color: var(--lotry-ink);
+            font-size: 1.35rem;
+            font-weight: 800;''',
+                  '''        .section-title,
+        .simple-result-title {
+            margin: 0 0 .5rem;
+            color: var(--lotry-ink);
+            font-size: 1.35rem;
+            font-weight: 700;''',
+              ),
+              (
+                  'div[data-testid="stRadio"] label { font-size: 1rem !important; font-weight: 650 !important; }',
+                  'div[data-testid="stRadio"] label { font-size: 1rem !important; font-weight: 600 !important; }',
+              ),
+              (
+                  '''        .stat-card-value {
+            color: var(--lotry-accent-dark);
+            font-size: 1.2rem;
+            font-weight: 800;''',
+                  '''        .stat-card-value {
+            color: var(--lotry-accent-dark);
+            font-size: 1.2rem;
+            font-weight: 700;''',
+              ),
+              (
+                  'direction = "和隨機差不多" if abs(diff) < 0.05 else ("比隨機高一點" if diff > 0 else "比隨機低一點")',
+                  'comparison = "兩個數字很接近" if abs(diff) < 0.05 else ("這組號碼高一點" if diff > 0 else "這組號碼低一點")',
+              ),
+              (
+                  '兩者{direction}。<br/><u>從這段歷史紀錄，看不出它有能重複出現的優勢。</u>',
+                  '{comparison}。<br/><u>從這段歷史紀錄，看不出它有能重複出現的優勢。</u>',
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one match, found {count}: {old[:80]!r}")
+              text = text.replace(old, new)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Remove accidentally committed smoke outputs
+        run: rm -rf refine-smoke streamlit-refine.log
+
+      - name: Validate Python syntax
+        run: python -m compileall -q streamlit_app.py src scripts
+
+      - name: Install app and browser dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Start Streamlit
+        run: |
+          streamlit run streamlit_app.py \
+            --server.headless true \
+            --server.address 127.0.0.1 \
+            --server.port 8501 \
+            > /tmp/streamlit-final.log 2>&1 &
+          for i in {1..60}; do
+            curl -fsS http://127.0.0.1:8501/_stcore/health && exit 0
+            sleep 1
+          done
+          cat /tmp/streamlit-final.log
+          exit 1
+
+      - name: Verify final desktop and mobile UI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+
+          out = Path("/tmp/final-smoke")
+          out.mkdir(exist_ok=True)
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              desktop = browser.new_context(viewport={"width": 1440, "height": 1100})
+              page = desktop.new_page()
+              page.goto("http://127.0.0.1:8501", wait_until="networkidle")
+              page.locator(".hero").wait_for(state="visible")
+              assert page.get_by_text("先選一個遊戲", exact=True).is_visible()
+              assert "目前收錄大樂透" in page.locator("body").inner_text()
+              assert page.evaluate("document.fonts.check('16px \\\"lotry-sans\\\"')")
+              title_weight = page.locator(".hero h1").evaluate("el => getComputedStyle(el).fontWeight")
+              assert title_weight == "700"
+              page.screenshot(path=out / "desktop-home.png", full_page=True)
+
+              page.get_by_role("button", name="讓電腦隨機選一組").click()
+              page.get_by_text("這組號碼，過去表現如何？", exact=True).wait_for(timeout=30000)
+              body_text = page.locator("body").inner_text()
+              assert "兩個數字很接近" in body_text or "這組號碼高一點" in body_text or "這組號碼低一點" in body_text
+              page.screenshot(path=out / "desktop-result.png", full_page=True)
+              desktop.close()
+
+              mobile = browser.new_context(viewport={"width": 390, "height": 844})
+              mobile_page = mobile.new_page()
+              mobile_page.goto("http://127.0.0.1:8501", wait_until="networkidle")
+              mobile_page.locator(".hero").wait_for(state="visible")
+              mobile_page.screenshot(path=out / "mobile-home.png", full_page=True)
+              mobile.close()
+              browser.close()
+          PY
+
+      - name: Upload final screenshots and log
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-refined-ui
+          path: |
+            /tmp/final-smoke/*.png
+            /tmp/streamlit-final.log
+          if-no-files-found: error
+
+      - name: Remove workflow and commit final result
+        run: |
+          rm .github/workflows/finalize-ui-refinement.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: fine-tune Chinese typography and copy"
+          git push origin HEAD:polish/readme-web-copy
