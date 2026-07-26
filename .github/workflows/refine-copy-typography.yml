@@ -1,0 +1,115 @@
+name: Refine copy and typography
+
+on:
+  push:
+    branches:
+      - polish/readme-web-copy
+    paths:
+      - scripts/refine_copy_typography.py
+      - .github/workflows/refine-copy-typography.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: polish/readme-web-copy
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Move bundled font into Streamlit static files
+        run: |
+          mkdir -p static/fonts
+          git mv assets/fonts/NotoSansTC-VF.ttf static/fonts/NotoSansTC-VF.ttf
+
+      - name: Apply wording and typography updates
+        run: python scripts/refine_copy_typography.py
+
+      - name: Validate Python syntax
+        run: python -m compileall -q streamlit_app.py src scripts
+
+      - name: Install app and browser dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Start Streamlit
+        run: |
+          streamlit run streamlit_app.py \
+            --server.headless true \
+            --server.address 127.0.0.1 \
+            --server.port 8501 \
+            > streamlit-refine.log 2>&1 &
+          for i in {1..60}; do
+            curl -fsS http://127.0.0.1:8501/_stcore/health && exit 0
+            sleep 1
+          done
+          cat streamlit-refine.log
+          exit 1
+
+      - name: Check desktop, mobile, font loading, and result flow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+
+          out = Path("refine-smoke")
+          out.mkdir(exist_ok=True)
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              desktop = browser.new_context(viewport={"width": 1440, "height": 1100})
+              page = desktop.new_page()
+              page.goto("http://127.0.0.1:8501", wait_until="networkidle")
+              page.locator(".hero").wait_for(state="visible")
+              assert "一個寫給爸爸的資料實驗" in page.locator(".hero").inner_text()
+              assert page.get_by_text("先選一個遊戲", exact=True).is_visible()
+              assert page.get_by_role("button", name="讓電腦隨機選一組").is_visible()
+              assert page.evaluate("document.fonts.check('16px \\\"lotry-sans\\\"')")
+              font_family = page.locator(".hero h1").evaluate("el => getComputedStyle(el).fontFamily")
+              assert "lotry-sans" in font_family
+              page.screenshot(path=out / "desktop-home.png", full_page=True)
+
+              page.get_by_role("button", name="讓電腦隨機選一組").click()
+              page.get_by_text("這組號碼，過去表現如何？", exact=True).wait_for(timeout=30000)
+              page.screenshot(path=out / "desktop-result.png", full_page=True)
+              desktop.close()
+
+              mobile = browser.new_context(viewport={"width": 390, "height": 844})
+              mobile_page = mobile.new_page()
+              mobile_page.goto("http://127.0.0.1:8501", wait_until="networkidle")
+              mobile_page.locator(".hero").wait_for(state="visible")
+              assert mobile_page.get_by_role("button", name="讓電腦隨機選一組").is_visible()
+              mobile_page.screenshot(path=out / "mobile-home.png", full_page=True)
+              mobile.close()
+              browser.close()
+          PY
+
+      - name: Upload screenshots and log
+        uses: actions/upload-artifact@v4
+        with:
+          name: refined-ui-smoke
+          path: |
+            refine-smoke/*.png
+            streamlit-refine.log
+          if-no-files-found: error
+
+      - name: Remove one-time files and commit result
+        run: |
+          rm scripts/refine_copy_typography.py .github/workflows/refine-copy-typography.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: improve Chinese typography and naturalize UI copy"
+          git push origin HEAD:polish/readme-web-copy
